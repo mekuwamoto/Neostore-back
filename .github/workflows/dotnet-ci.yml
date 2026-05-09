@@ -5,6 +5,10 @@ on:
     branches:
       - 'feature/**'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -30,3 +34,21 @@ jobs:
 
       - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity normal
+
+  create-pull-request:
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base develop \
+            --head "${{ github.ref_name }}" \
+            --title "PR - ${{ github.ref_name }}" \
+            --body "Pull Request criada automaticamente após sucesso da pipeline CI em branch ${{ github.ref_name }}." \
