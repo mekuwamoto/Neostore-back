@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Neostore.Application\Neostore.Application.csproj" />
+    <ProjectReference Include="..\Neostore.Domain\Neostore.Domain.csproj" />
+    <ProjectReference Include="..\Neostore.Infrastructure\Neostore.Infrastructure.csproj" />
+    <ProjectReference Include="..\Neostore.Persistence\Neostore.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>
