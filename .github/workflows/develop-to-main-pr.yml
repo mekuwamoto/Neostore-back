@@ -1,16 +1,21 @@
-name: .NET CI
+name: Develop to Main PR
 
 on:
-  push:
+  pull_request:
     branches:
-      - 'feature/**'
+      - develop
+    types:
+      - closed
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  build-test:
+  validate-and-create-pr:
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
     runs-on: ubuntu-latest
 
     defaults:
@@ -35,22 +40,15 @@ jobs:
       - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity normal
 
-  create-pull-request:
-    needs: build-test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check if PR already exists
+      - name: Check if develop -> main PR already exists
         id: check_pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: .
         run: |
           PR_COUNT=$(gh pr list \
-            --base develop \
-            --head "${{ github.ref_name }}" \
+            --base main \
+            --head develop \
             --state open \
             --json number \
             --jq '. | length')
@@ -63,13 +61,14 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Pull Request
+      - name: Create Pull Request develop -> main
         if: steps.check_pr.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: .
         run: |
           gh pr create \
-            --base develop \
-            --head "${{ github.ref_name }}" \
-            --title "PR - ${{ github.ref_name }}" \
-            --body "Pull Request criada automaticamente após sucesso da pipeline CI."
+            --base main \
+            --head develop \
+            --title "Release - develop -> main" \
+            --body "Pull Request automática criada após merge em develop."
