@@ -1,0 +1,25 @@
+﻿using Neostore.Application;
+using Neostore.Infrastructure;
+using Neostore.Persistence;
+
+namespace Neostore.Api.Services;
+
+internal static class DependencyInjection
+{
+    internal static IServiceCollection AddServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services
+            .AppApiServices()
+            .AddApplication(configuration)
+            .AddInfrastructure(configuration)
+            .AddPersistence(configuration);
+        return services;
+    }
+
+    internal static IServiceCollection AppApiServices(this IServiceCollection services)
+    {
+        services.AddControllers();
+        services.AddOpenApi();
+        return services;
+    }
+}
