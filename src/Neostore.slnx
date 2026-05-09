@@ -4,4 +4,5 @@
   <Project Path="Neostore.Domain/Neostore.Domain.csproj" Id="0efdf1da-1cae-4b4b-9334-75959b72c3b7" />
   <Project Path="Neostore.Infrastructure/Neostore.Infrastructure.csproj" Id="61f81283-1224-4325-9c41-5f4838805fe7" />
   <Project Path="Neostore.Persistence/Neostore.Persistence.csproj" Id="3357e11a-83e0-4795-bc9c-8fac00140ddf" />
+  <Project Path="Neostore.Tests/Neostore.Tests.csproj" Id="5408025f-dbd6-4389-934e-edbb9202ed3f" />
 </Solution>
