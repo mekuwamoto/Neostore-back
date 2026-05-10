@@ -5,7 +5,7 @@ Este documento especifica o roteiro técnico para a implementação das operaç�
 ## 1. Fluxo de Implementação (Padrão)
 Para cada entidade, a implementação deve seguir esta ordem lógica para garantir a integridade da arquitetura:
 1.  **Domínio:** Definição da entidade e métodos de negócio.
-2.  **Persistência:** Mapeamento (Fluent API) para MariaDB e implementação do Repositório.
+2.  **Persistência:** Mapeamento (Fluent API Configuration em arquivo próprio por entidade) para MariaDB e implementação do Repositório.
 3.  **Application (Commands):** Definição das intenções de escrita e regras de validação.
 4.  **Application (Queries):** Definição das intenções de leitura e DTOs de resposta.
 5.  **Application (Handlers):** Implementação da lógica de orquestração utilizando Mediatr
@@ -16,56 +16,79 @@ Para cada entidade, a implementação deve seguir esta ordem lógica para garant
 ## 2. CRUD de Categorias
 
 ### 2.1 Operações de Escrita (Commands)
-| Operação                | Dados de Entrada                   | Regras de Negócio e Validações                                                  |
-| :---------------------- | :--------------------------------- | :------------------------------------------------------------------------------ |
-| **Criar Categoria**     | Nome, IdCategoriaPai (Opcional)    | Gerar Slug automaticamente. Nome deve ser único. Validar existência do pai.     |
-| **Atualizar Categoria** | Id, Nome,IdCategoriaPai (Opcional) | Atualizar Slug se o nome mudar. Impedir auto-referência (id == idCategoriaPai). |
-| **Excluir Categoria**   | Id                                 | Impedir exclusão se houver produtos vinculados ou subcategorias ativas.         |
+| Operação                | Dados de Entrada                   | Regras de Negócio e Validações                                                  | Status |
+| :---------------------- | :--------------------------------- | :------------------------------------------------------------------------------ | :----- |
+| **Criar Categoria**     | Nome, IdCategoriaPai (Opcional)    | Gerar Slug automaticamente. Nome deve ser único. Validar existência do pai.     | ✅ Implementado |
+| **Atualizar Categoria** | Id, Nome, IdCategoriaPai (Opcional) | Atualizar Slug se o nome mudar. Impedir auto-referência (id == idCategoriaPai). | ✅ Implementado |
+| **Excluir Categoria**   | Id                                 | Impedir exclusão se houver produtos vinculados ou subcategorias ativas.         | ✅ Implementado |
 
 ### 2.2 Operações de Leitura (Queries)
-- **Obter por Id:** Retorna detalhes da categoria e nome da categoria pai.
-- **Listar Árvore:** Retorna todas as categorias organizadas de forma hierárquica.
-- **Listar Raiz:** Retorna apenas categorias que não possuem `idCategoriaPai`.
+| Operação              | Descrição                                                           | Status |
+| :-------------------- | :------------------------------------------------------------------ | :----- |
+| **Obter por Id**      | Retorna detalhes da categoria e nome da categoria pai.              | ✅ Implementado |
+| **Listar Árvore**     | Retorna todas as categorias organizadas de forma hierárquica.       | ✅ Implementado |
+| **Listar Raiz**       | Retorna apenas categorias que não possuem `idCategoriaPai`.         | ⏳ Parcial — `ObterRaizAsync` implementado no repositório, sem Query/Handler/endpoint expostos |
 
 ---
 
 ## 3. CRUD de Produtos
 
 ### 3.1 Operações de Escrita (Commands)
-| Operação              | Dados de Entrada                                      | Regras de Negócio e Validações                                                         |
-| :-------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------------- |
-| **Criar Produto**     | Nome, SKU, Preço, IdCategoria, Descrição, Imagens     | SKU deve ser único no sistema. idCategoria deve existir. Preço > 0.                    |
-| **Atualizar Produto** | Id, Nome, SKU, Preço, IdCategoria, Descrição, Imagens | Validar unicidade do SKU (exceto para o próprio registro).                             |
-| **Ajustar Estoque**   | Id, Quantidade (Delta)                                | Aumentar ou diminuir o estoque atual. O saldo final nunca pode ser < 0.                |
-| **Excluir Produto**   | Id                                                    | Aplicar Soft-Delete (marcar como inativo) para preservar histórico de pedidos futuros. |
+| Operação              | Dados de Entrada                                      | Regras de Negócio e Validações                                                         | Status |
+| :-------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------------- | :----- |
+| **Criar Produto**     | Nome, SKU, Preço, IdCategoria, Descrição, Imagens     | SKU deve ser único no sistema. idCategoria deve existir. Preço > 0.                    | ✅ Implementado |
+| **Atualizar Produto** | Id, Nome, SKU, Preço, IdCategoria, Descrição, Imagens | Validar unicidade do SKU (exceto para o próprio registro).                             | ✅ Implementado |
+| **Ajustar Estoque**   | Id, Quantidade (Delta)                                | Aumentar ou diminuir o estoque atual. O saldo final nunca pode ser < 0.                | ✅ Implementado |
+| **Excluir Produto**   | Id                                                    | Aplicar Soft-Delete (marcar como inativo) para preservar histórico de pedidos futuros. | ⚠️ Pendente — atualmente implementado como hard-delete; entidade não possui campo `Ativo`/`DeletadoEm` |
 
 ### 3.2 Operações de Leitura (Queries)
-- **Obter Detalhes:** Retorna todos os campos do produto + objeto Categoria simplificado.
-- **Listagem Paginada:** Suporte a filtros por `idCategoria`, `Nome` (busca parcial) e `SKU`.
-- **Verificar Disponibilidade:** Consulta rápida apenas do saldo de estoque por Id.
+| Operação                     | Descrição                                                             | Status |
+| :--------------------------- | :-------------------------------------------------------------------- | :----- |
+| **Obter Detalhes**           | Retorna todos os campos do produto + objeto Categoria simplificado.   | ✅ Implementado |
+| **Listagem Paginada**        | Suporte a filtros por `idCategoria`, `Nome` (busca parcial) e `SKU`. | ✅ Implementado |
+| **Verificar Disponibilidade** | Consulta rápida apenas do saldo de estoque por Id.                   | ❌ Não implementado |
 
 ---
 
 ## 4. Definição de Endpoints (API Admin)
 
 ### Categorias
-- `POST /api/admin/categorias` -> CreateCategory
-- `GET /api/admin/categorias` -> GetCategoryTree
-- `GET /api/admin/categorias/{id}` -> GetCategoryById
-- `PUT /api/admin/categorias/{id}` -> UpdateCategory
-- `DELETE /api/admin/categorias/{id}` -> DeleteCategory
+| Método | Endpoint | Handler | Status |
+| :----- | :------- | :------ | :----- |
+| `POST` | `/api/admin/categorias` | `CriarCategoriaCommandHandler` | ✅ |
+| `GET` | `/api/admin/categorias` | `ObterTodasCategoriasQueryHandler` | ✅ |
+| `GET` | `/api/admin/categorias/{id}` | `ObterCategoriaPorIdQueryHandler` | ✅ |
+| `PUT` | `/api/admin/categorias/{id}` | `AtualizarCategoriaCommandHandler` | ✅ |
+| `DELETE` | `/api/admin/categorias/{id}` | `DeletarCategoriaCommandHandler` | ✅ |
+| `GET` | `/api/admin/categorias/raiz` | — | ⏳ Pendente |
 
 ### Produtos
-- `POST /api/admin/produtos` -> CreateProduct
-- `GET /api/admin/produtos` -> GetPagedProducts
-- `GET /api/admin/produtos/{id}` -> GetProductById
-- `PUT /api/admin/produtos/{id}` -> UpdateProduct
-- `PATCH /api/admin/produtos/{id}/estoque` -> UpdateStock
-- `DELETE /api/admin/produtos/{id}` -> DeleteProduct
+| Método | Endpoint | Handler | Status |
+| :----- | :------- | :------ | :----- |
+| `POST` | `/api/admin/produtos` | `CriarProdutoCommandHandler` | ✅ |
+| `GET` | `/api/admin/produtos` | `ObterProdutosPaginadoQueryHandler` | ✅ |
+| `GET` | `/api/admin/produtos/{id}` | `ObterProdutoPorIdQueryHandler` | ✅ |
+| `PUT` | `/api/admin/produtos/{id}` | `AtualizarProdutoCommandHandler` | ✅ |
+| `PATCH` | `/api/admin/produtos/{id}/estoque` | `AjustarEstoqueCommandHandler` | ✅ |
+| `DELETE` | `/api/admin/produtos/{id}` | `DeletarProdutoCommandHandler` | ⚠️ Hard-delete — pendente soft-delete |
+| `GET` | `/api/admin/produtos/{id}/disponibilidade` | — | ❌ Não implementado |
 
 ---
 
 ## 5. Requisitos Transversais
-- **Validação:** Uso obrigatório de `FluentValidation` em todos os Commands antes de chegar ao Handler.
-- **Logs:** Registrar no log de auditoria: Usuário Executor, Operação, Data/Hora e Id do Registro afetado.
-- **Tratamento de Erros:** Exceções de negócio (ex: SKU Duplicado) devem retornar `400 Bad Request` com mensagens claras. Erros de sistema devem retornar `500`.
+| Requisito | Status |
+| :-------- | :----- |
+| **Validação** — FluentValidation em todos os Commands antes do Handler | ✅ Implementado — `CriarProdutoCommandValidator`, `AtualizarProdutoCommandValidator`, `CriarCategoriaCommandValidator`, `AtualizarCategoriaCommandValidator` |
+| **Logs** — Registrar: Usuário Executor, Operação, Data/Hora, Id do Registro | ❌ Não implementado |
+| **Tratamento de Erros** — `400 Bad Request` para exceções de negócio; `500` para erros de sistema | ✅ Implementado — `InvalidOperationException` mapeada para `BadRequest` nos controllers |
+
+---
+
+## 6. Pendências
+
+- [ ] **Soft-Delete de Produto:** Adicionar campo `Ativo` ou `DeletadoEm` na entidade `Produto`, criar migration, ajustar repositório para filtrar inativo nas queries de leitura e alterar `DeletarProdutoCommandHandler` para marcar inativo ao invés de deletar.
+- [ ] **Listar Raiz (Categorias):** Criar `ObterRaizQuery`, `ObterRaizQueryHandler` e expor endpoint `GET /api/admin/categorias/raiz` usando `ObterRaizAsync` já existente no `ICategoriaRepository`.
+- [ ] **Verificar Disponibilidade (Produto):** Criar `ObterEstoqueQuery`, handler e endpoint `GET /api/admin/produtos/{id}/disponibilidade` retornando apenas `{ id, estoque }`.
+- [ ] **Logs de Auditoria:** Definir estratégia (middleware, interceptor EF Core, ou decorator MediatR) e implementar registro de operações.
+- [ ] **Migrations:** Gerar migration inicial com `dotnet ef migrations add InitialCreate`.
+- [ ] **Docker Compose:** Configurar ambiente local com MariaDB.
