@@ -19,7 +19,19 @@ internal static class DependencyInjection
     internal static IServiceCollection AppApiServices(this IServiceCollection services)
     {
         services.AddControllers();
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, context, ct) =>
+            {
+                document.Info = new()
+                {
+                    Title = "Neostore API",
+                    Version = "v1",
+                    Description = "API administrativa do Neostore — gestão de produtos, categorias e usuários."
+                };
+                return Task.CompletedTask;
+            });
+        });
         return services;
     }
 }

@@ -18,6 +18,9 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ProdutoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<ProdutoDto>> Criar([FromBody] CriarProdutoCommand command)
     {
         ProdutoDto resultado = await _mediator.Send(command);
@@ -25,6 +28,7 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(ProdutosPaginadoDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ProdutosPaginadoDto>> ObterPaginado(
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanho = 10,
@@ -38,6 +42,8 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(ProdutoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProdutoDto>> ObterPorId(Guid id)
     {
         var resultado = await _mediator.Send(new ObterProdutoPorIdQuery(id));
@@ -48,6 +54,9 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [ProducesResponseType(typeof(ProdutoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProdutoDto>> Atualizar(Guid id, [FromBody] AtualizarProdutoCommand command)
     {
         AtualizarProdutoCommand commandComId = new AtualizarProdutoCommand(
@@ -65,6 +74,9 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpPatch("{id}/estoque")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<int>> AjustarEstoque(Guid id, [FromBody] AjustarEstoqueRequest request)
     {
         AjustarEstoqueCommand comando = new AjustarEstoqueCommand(id, request.Quantidade);
@@ -73,6 +85,8 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Deletar(Guid id)
     {
         bool resultado = await _mediator.Send(new DeletarProdutoCommand(id));

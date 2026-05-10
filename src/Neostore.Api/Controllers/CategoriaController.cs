@@ -18,6 +18,9 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(CategoriaDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<CategoriaDto>> Criar([FromBody] CriarCategoriaCommand command)
     {
         CategoriaDto resultado = await _mediator.Send(command);
@@ -25,6 +28,7 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(List<CategoriaDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<CategoriaDto>>> ObterArvore()
     {
         var resultado = await _mediator.Send(new ObterTodasCategoriasQuery());
@@ -32,6 +36,8 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(CategoriaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CategoriaDto>> ObterPorId(Guid id)
     {
         var resultado = await _mediator.Send(new ObterCategoriaPorIdQuery(id));
@@ -42,6 +48,9 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [ProducesResponseType(typeof(CategoriaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CategoriaDto>> Atualizar(Guid id, [FromBody] AtualizarCategoriaCommand command)
     {
         AtualizarCategoriaCommand commandComId = new AtualizarCategoriaCommand(id, command.Nome, command.IdCategoriaPai);
@@ -50,6 +59,9 @@ public class CategoriaController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Deletar(Guid id)
     {
         bool resultado = await _mediator.Send(new DeletarCategoriaCommand(id));

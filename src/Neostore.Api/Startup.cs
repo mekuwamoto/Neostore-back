@@ -1,5 +1,6 @@
 using Neostore.Api.Middlewares;
 using Neostore.Api.Services;
+using Scalar.AspNetCore;
 using Serilog;
 
 namespace Neostore.Api;
@@ -19,6 +20,8 @@ public static class Startup
         {
             app.UseSerilogRequestLogging();
             app.ConfigureMiddlewares();
+            app.MapOpenApi();
+            app.MapScalarApiReference();
             app.MapControllers();
             app.Run();
         }
