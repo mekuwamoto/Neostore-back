@@ -9,7 +9,7 @@ public class Produto : ISoftDeletable
     public string SKU { get; set; } = string.Empty;
     public decimal Preço { get; set; }
     public Guid IdCategoria { get; set; }
-    public string Descrição { get; set; } = string.Empty;
+    public string? Descrição { get; set; }
     public List<Imagem> Imagens { get; set; } = new();
     public int Estoque { get; set; }
     public bool Ativo { get; set; } = true;

@@ -5,7 +5,7 @@ public class Imagem
     public Guid Id { get; set; }
     public string NomeArquivo { get; set; } = string.Empty;
     public string ChaveS3 { get; set; } = string.Empty;
-    public string TipoConteudo { get; set; } = string.Empty;
+    public string? TipoConteudo { get; set; }
     public long TamanhoBytes { get; set; }
     public Guid IdProduto { get; set; }
     public DateTime DataCriacao { get; set; }
