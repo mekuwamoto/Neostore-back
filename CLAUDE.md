@@ -174,6 +174,7 @@ Architecture decisions and implementation specs live in `./specs/` — all in AD
 | `04-middleware.md` | Serilog + ExceptionMiddleware + LoggingBehavior |
 | `05-swagger.md` | OpenAPI with Scalar UI |
 | `06-automapper.md` | AutoMapper for DTO mapping |
+| `07-crud-usuario-admin.md` | CRUD de Usuários Admin — handlers, controller, BCrypt |
 
 ADR statuses: `Implemented` | `Partially Implemented` | `Proposed` | `Accepted`
 

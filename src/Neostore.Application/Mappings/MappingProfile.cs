@@ -11,5 +11,6 @@ public class MappingProfile : Profile
         CreateMap<Categoria, CategoriaDto>();
         CreateMap<Produto, ProdutoDto>();
         CreateMap<Imagem, ImagemDto>();
+        CreateMap<UsuarioAdmin, UsuarioAdminDto>();
     }
 }
