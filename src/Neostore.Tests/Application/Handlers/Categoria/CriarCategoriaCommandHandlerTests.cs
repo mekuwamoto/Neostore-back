@@ -1,7 +1,9 @@
+using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.Categoria;
 using Neostore.Application.Handlers.Categoria;
+using Neostore.Application.Mappings;
 using Neostore.Domain.Entities;
 using Categoria = Neostore.Domain.Entities.Categoria;
 using Neostore.Persistence.Repositories;
@@ -11,11 +13,12 @@ namespace Neostore.Tests.Application.CategoriaHandlers;
 public class CriarCategoriaCommandHandlerTests
 {
     private readonly Mock<ICategoriaRepository> _categoriaRepo = new();
+    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
     private readonly CriarCategoriaCommandHandler _handler;
 
     public CriarCategoriaCommandHandlerTests()
     {
-        _handler = new CriarCategoriaCommandHandler(_categoriaRepo.Object);
+        _handler = new CriarCategoriaCommandHandler(_categoriaRepo.Object, _mapper);
     }
 
     [Fact]

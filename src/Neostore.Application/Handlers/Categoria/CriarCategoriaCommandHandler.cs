@@ -1,7 +1,7 @@
+using AutoMapper;
 using MediatR;
 using Neostore.Application.Commands.Categoria;
 using Neostore.Application.DTOs;
-using Neostore.Domain.Entities;
 using Neostore.Persistence.Repositories;
 
 namespace Neostore.Application.Handlers.Categoria;
@@ -9,10 +9,12 @@ namespace Neostore.Application.Handlers.Categoria;
 public class CriarCategoriaCommandHandler : IRequestHandler<CriarCategoriaCommand, CategoriaDto>
 {
     private readonly ICategoriaRepository _repository;
+    private readonly IMapper _mapper;
 
-    public CriarCategoriaCommandHandler(ICategoriaRepository repository)
+    public CriarCategoriaCommandHandler(ICategoriaRepository repository, IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<CategoriaDto> Handle(CriarCategoriaCommand request, CancellationToken cancellationToken)
@@ -37,12 +39,6 @@ public class CriarCategoriaCommandHandler : IRequestHandler<CriarCategoriaComman
 
         await _repository.CriarAsync(categoria);
 
-        return new CategoriaDto
-        {
-            Id = categoria.Id,
-            Nome = categoria.Nome,
-            Slug = categoria.Slug,
-            IdCategoriaPai = categoria.IdCategoriaPai
-        };
+        return _mapper.Map<Domain.Entities.Categoria, CategoriaDto>(categoria);
     }
 }

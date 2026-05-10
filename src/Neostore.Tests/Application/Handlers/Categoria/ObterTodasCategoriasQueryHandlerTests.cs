@@ -1,6 +1,8 @@
+using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Handlers.Categoria;
+using Neostore.Application.Mappings;
 using Neostore.Application.Queries.Categoria;
 using Neostore.Domain.Entities;
 using Categoria = Neostore.Domain.Entities.Categoria;
@@ -11,11 +13,12 @@ namespace Neostore.Tests.Application.CategoriaHandlers;
 public class ObterTodasCategoriasQueryHandlerTests
 {
     private readonly Mock<ICategoriaRepository> _categoriaRepo = new();
+    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
     private readonly ObterTodasCategoriasQueryHandler _handler;
 
     public ObterTodasCategoriasQueryHandlerTests()
     {
-        _handler = new ObterTodasCategoriasQueryHandler(_categoriaRepo.Object);
+        _handler = new ObterTodasCategoriasQueryHandler(_categoriaRepo.Object, _mapper);
     }
 
     [Fact]

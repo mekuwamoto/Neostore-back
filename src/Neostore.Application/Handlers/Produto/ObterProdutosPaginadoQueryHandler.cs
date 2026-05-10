@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Neostore.Application.DTOs;
 using Neostore.Application.Queries.Produto;
@@ -8,10 +9,12 @@ namespace Neostore.Application.Handlers.Produto;
 public class ObterProdutosPaginadoQueryHandler : IRequestHandler<ObterProdutosPaginadoQuery, ProdutosPaginadoDto>
 {
     private readonly IProdutoRepository _repository;
+    private readonly IMapper _mapper;
 
-    public ObterProdutosPaginadoQueryHandler(IProdutoRepository repository)
+    public ObterProdutosPaginadoQueryHandler(IProdutoRepository repository, IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<ProdutosPaginadoDto> Handle(ObterProdutosPaginadoQuery request, CancellationToken cancellationToken)
@@ -21,35 +24,10 @@ public class ObterProdutosPaginadoQueryHandler : IRequestHandler<ObterProdutosPa
 
         return new ProdutosPaginadoDto
         {
-            Dados = produtos.Select(MapToProdutoDto).ToList(),
+            Dados = _mapper.Map<List<Domain.Entities.Produto>, List<ProdutoDto>>(produtos),
             Total = total,
             Pagina = request.Pagina,
             Tamanho = request.Tamanho
-        };
-    }
-
-    private static ProdutoDto MapToProdutoDto(Domain.Entities.Produto produto)
-    {
-        return new ProdutoDto
-        {
-            Id = produto.Id,
-            Nome = produto.Nome,
-            SKU = produto.SKU,
-            Preço = produto.Preço,
-            IdCategoria = produto.IdCategoria,
-            Descrição = produto.Descrição,
-            Estoque = produto.Estoque,
-            Imagens = produto.Imagens
-                .Select(i => new ImagemDto
-                {
-                    Id = i.Id,
-                    NomeArquivo = i.NomeArquivo,
-                    ChaveS3 = i.ChaveS3,
-                    TipoConteudo = i.TipoConteudo,
-                    TamanhoBytes = i.TamanhoBytes,
-                    DataCriacao = i.DataCriacao
-                })
-                .ToList()
         };
     }
 }

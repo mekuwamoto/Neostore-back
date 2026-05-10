@@ -1,6 +1,8 @@
+using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Handlers.Produto;
+using Neostore.Application.Mappings;
 using Neostore.Application.Queries.Produto;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;
@@ -11,11 +13,12 @@ namespace Neostore.Tests.Application.ProdutoHandlers;
 public class ObterProdutoPorIdQueryHandlerTests
 {
     private readonly Mock<IProdutoRepository> _produtoRepo = new();
+    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
     private readonly ObterProdutoPorIdQueryHandler _handler;
 
     public ObterProdutoPorIdQueryHandlerTests()
     {
-        _handler = new ObterProdutoPorIdQueryHandler(_produtoRepo.Object);
+        _handler = new ObterProdutoPorIdQueryHandler(_produtoRepo.Object, _mapper);
     }
 
     [Fact]

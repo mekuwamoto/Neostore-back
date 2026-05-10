@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Neostore.Application.DTOs;
 using Neostore.Application.Queries.Categoria;
@@ -8,10 +9,12 @@ namespace Neostore.Application.Handlers.Categoria;
 public class ObterCategoriaPorIdQueryHandler : IRequestHandler<ObterCategoriaPorIdQuery, CategoriaDto?>
 {
     private readonly ICategoriaRepository _repository;
+    private readonly IMapper _mapper;
 
-    public ObterCategoriaPorIdQueryHandler(ICategoriaRepository repository)
+    public ObterCategoriaPorIdQueryHandler(ICategoriaRepository repository, IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<CategoriaDto?> Handle(ObterCategoriaPorIdQuery request, CancellationToken cancellationToken)
@@ -20,12 +23,6 @@ public class ObterCategoriaPorIdQueryHandler : IRequestHandler<ObterCategoriaPor
         if (categoria == null)
             return null;
 
-        return new CategoriaDto
-        {
-            Id = categoria.Id,
-            Nome = categoria.Nome,
-            Slug = categoria.Slug,
-            IdCategoriaPai = categoria.IdCategoriaPai
-        };
+        return _mapper.Map<Domain.Entities.Categoria, CategoriaDto>(categoria);
     }
 }

@@ -1,8 +1,10 @@
+using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.Produto;
 using Neostore.Application.DTOs;
 using Neostore.Application.Handlers.Produto;
+using Neostore.Application.Mappings;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;
 using Neostore.Persistence.Repositories;
@@ -13,11 +15,12 @@ public class CriarProdutoCommandHandlerTests
 {
     private readonly Mock<IProdutoRepository> _produtoRepo = new();
     private readonly Mock<ICategoriaRepository> _categoriaRepo = new();
+    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
     private readonly CriarProdutoCommandHandler _handler;
 
     public CriarProdutoCommandHandlerTests()
     {
-        _handler = new CriarProdutoCommandHandler(_produtoRepo.Object, _categoriaRepo.Object);
+        _handler = new CriarProdutoCommandHandler(_produtoRepo.Object, _categoriaRepo.Object, _mapper);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Neostore.Application.Commands.Produto;
 using Neostore.Application.DTOs;
@@ -10,11 +11,13 @@ public class AtualizarProdutoCommandHandler : IRequestHandler<AtualizarProdutoCo
 {
     private readonly IProdutoRepository _produtoRepository;
     private readonly ICategoriaRepository _categoriaRepository;
+    private readonly IMapper _mapper;
 
-    public AtualizarProdutoCommandHandler(IProdutoRepository produtoRepository, ICategoriaRepository categoriaRepository)
+    public AtualizarProdutoCommandHandler(IProdutoRepository produtoRepository, ICategoriaRepository categoriaRepository, IMapper mapper)
     {
         _produtoRepository = produtoRepository;
         _categoriaRepository = categoriaRepository;
+        _mapper = mapper;
     }
 
     public async Task<ProdutoDto> Handle(AtualizarProdutoCommand request, CancellationToken cancellationToken)
@@ -52,31 +55,6 @@ public class AtualizarProdutoCommandHandler : IRequestHandler<AtualizarProdutoCo
 
         await _produtoRepository.AtualizarAsync(produto);
 
-        return MapToProdutoDto(produto);
-    }
-
-    private static ProdutoDto MapToProdutoDto(Domain.Entities.Produto produto)
-    {
-        return new ProdutoDto
-        {
-            Id = produto.Id,
-            Nome = produto.Nome,
-            SKU = produto.SKU,
-            Preço = produto.Preço,
-            IdCategoria = produto.IdCategoria,
-            Descrição = produto.Descrição,
-            Estoque = produto.Estoque,
-            Imagens = produto.Imagens
-                .Select(i => new ImagemDto
-                {
-                    Id = i.Id,
-                    NomeArquivo = i.NomeArquivo,
-                    ChaveS3 = i.ChaveS3,
-                    TipoConteudo = i.TipoConteudo,
-                    TamanhoBytes = i.TamanhoBytes,
-                    DataCriacao = i.DataCriacao
-                })
-                .ToList()
-        };
+        return _mapper.Map<Domain.Entities.Produto, ProdutoDto>(produto);
     }
 }

@@ -1,3 +1,4 @@
+using AutoMapper;
 using MediatR;
 using Neostore.Application.Commands.Categoria;
 using Neostore.Application.DTOs;
@@ -8,10 +9,12 @@ namespace Neostore.Application.Handlers.Categoria;
 public class AtualizarCategoriaCommandHandler : IRequestHandler<AtualizarCategoriaCommand, CategoriaDto>
 {
     private readonly ICategoriaRepository _repository;
+    private readonly IMapper _mapper;
 
-    public AtualizarCategoriaCommandHandler(ICategoriaRepository repository)
+    public AtualizarCategoriaCommandHandler(ICategoriaRepository repository, IMapper mapper)
     {
         _repository = repository;
+        _mapper = mapper;
     }
 
     public async Task<CategoriaDto> Handle(AtualizarCategoriaCommand request, CancellationToken cancellationToken)
@@ -39,12 +42,6 @@ public class AtualizarCategoriaCommandHandler : IRequestHandler<AtualizarCategor
 
         await _repository.AtualizarAsync(categoria);
 
-        return new CategoriaDto
-        {
-            Id = categoria.Id,
-            Nome = categoria.Nome,
-            Slug = categoria.Slug,
-            IdCategoriaPai = categoria.IdCategoriaPai
-        };
+        return _mapper.Map<Domain.Entities.Categoria, CategoriaDto>(categoria);
     }
 }
