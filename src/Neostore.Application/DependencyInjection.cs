@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Neostore.Application.Behaviors;
+using Neostore.Application.Mappings;
 
 namespace Neostore.Application;
 
@@ -13,7 +14,7 @@ public static class DependencyInjection
         services.AddMediatR(typeof(DependencyInjection));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
         return services;
     }
