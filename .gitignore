@@ -605,3 +605,5 @@ obj/
 # End of https://www.toptal.com/developers/gitignore/api/csharp,dotnetcore,visualstudio,visualstudiocode
 
 /specs/.obsidian
+
+src/Neostore.Api/appsettings.Development.json
