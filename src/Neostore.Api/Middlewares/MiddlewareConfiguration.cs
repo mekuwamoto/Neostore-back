@@ -5,6 +5,7 @@ internal static class MiddlewareConfiguration
 {
     internal static IApplicationBuilder ConfigureMiddlewares(this IApplicationBuilder app)
     {
+        app.UseMiddleware<ExceptionMiddleware>();
         app.UseHttpsRedirection();
         app.UseAuthorization();
         return app;

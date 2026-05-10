@@ -20,15 +20,8 @@ public class CategoriaController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoriaDto>> Criar([FromBody] CriarCategoriaCommand command)
     {
-        try
-        {
-            var resultado = await _mediator.Send(command);
-            return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
+        CategoriaDto resultado = await _mediator.Send(command);
+        return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
     }
 
     [HttpGet]
@@ -51,32 +44,18 @@ public class CategoriaController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<CategoriaDto>> Atualizar(Guid id, [FromBody] AtualizarCategoriaCommand command)
     {
-        try
-        {
-            var commandComId = new AtualizarCategoriaCommand(id, command.Nome, command.IdCategoriaPai);
-            var resultado = await _mediator.Send(commandComId);
-            return Ok(resultado);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
+        AtualizarCategoriaCommand commandComId = new AtualizarCategoriaCommand(id, command.Nome, command.IdCategoriaPai);
+        CategoriaDto resultado = await _mediator.Send(commandComId);
+        return Ok(resultado);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Deletar(Guid id)
     {
-        try
-        {
-            var resultado = await _mediator.Send(new DeletarCategoriaCommand(id));
-            if (!resultado)
-                return NotFound();
+        bool resultado = await _mediator.Send(new DeletarCategoriaCommand(id));
+        if (!resultado)
+            return NotFound();
 
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { erro = ex.Message });
-        }
+        return NoContent();
     }
 }
