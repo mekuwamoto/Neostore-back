@@ -20,4 +20,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Neostore.Api\Neostore.Api.csproj" />
+    <ProjectReference Include="..\Neostore.Application\Neostore.Application.csproj" />
+    <ProjectReference Include="..\Neostore.Domain\Neostore.Domain.csproj" />
+    <ProjectReference Include="..\Neostore.Infrastructure\Neostore.Infrastructure.csproj" />
+    <ProjectReference Include="..\Neostore.Persistence\Neostore.Persistence.csproj" />
+  </ItemGroup>
+
 </Project>
