@@ -2,18 +2,18 @@ using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Handlers.Produto;
-using Neostore.Application.Mappings;
 using Neostore.Application.Queries.Produto;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;
 using Neostore.Persistence.Repositories;
+using Neostore.Tests.Factories;
 
 namespace Neostore.Tests.Application.ProdutoHandlers;
 
 public class ObterProdutosPaginadoQueryHandlerTests
 {
     private readonly Mock<IProdutoRepository> _produtoRepo = new();
-    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
+    private readonly IMapper _mapper = AutoMapperFactory.Create();
     private readonly ObterProdutosPaginadoQueryHandler _handler;
 
     public ObterProdutosPaginadoQueryHandlerTests()

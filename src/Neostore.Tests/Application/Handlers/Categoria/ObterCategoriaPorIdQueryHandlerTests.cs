@@ -2,18 +2,18 @@ using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Handlers.Categoria;
-using Neostore.Application.Mappings;
 using Neostore.Application.Queries.Categoria;
 using Neostore.Domain.Entities;
 using Categoria = Neostore.Domain.Entities.Categoria;
 using Neostore.Persistence.Repositories;
+using Neostore.Tests.Factories;
 
 namespace Neostore.Tests.Application.CategoriaHandlers;
 
 public class ObterCategoriaPorIdQueryHandlerTests
 {
     private readonly Mock<ICategoriaRepository> _categoriaRepo = new();
-    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
+    private readonly IMapper _mapper = AutoMapperFactory.Create();
     private readonly ObterCategoriaPorIdQueryHandler _handler;
 
     public ObterCategoriaPorIdQueryHandlerTests()

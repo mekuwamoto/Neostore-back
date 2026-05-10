@@ -4,10 +4,10 @@ using Moq;
 using Neostore.Application.Commands.Produto;
 using Neostore.Application.DTOs;
 using Neostore.Application.Handlers.Produto;
-using Neostore.Application.Mappings;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;
 using Neostore.Persistence.Repositories;
+using Neostore.Tests.Factories;
 
 namespace Neostore.Tests.Application.ProdutoHandlers;
 
@@ -15,7 +15,7 @@ public class AtualizarProdutoCommandHandlerTests
 {
     private readonly Mock<IProdutoRepository> _produtoRepo = new();
     private readonly Mock<ICategoriaRepository> _categoriaRepo = new();
-    private readonly IMapper _mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
+    private readonly IMapper _mapper = AutoMapperFactory.Create();
     private readonly AtualizarProdutoCommandHandler _handler;
 
     public AtualizarProdutoCommandHandlerTests()
