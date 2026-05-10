@@ -42,6 +42,16 @@ public class ProdutoConfiguration : IEntityTypeConfiguration<Produto>
             .HasColumnName("estoque")
             .IsRequired();
 
+        builder.Property(p => p.Ativo)
+            .HasColumnName("ativo")
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(p => p.DeletadoEm)
+            .HasColumnName("deletado_em");
+
+        builder.HasQueryFilter(p => p.Ativo);
+
         builder.HasIndex(p => p.SKU).IsUnique();
 
         builder.HasOne<Categoria>()

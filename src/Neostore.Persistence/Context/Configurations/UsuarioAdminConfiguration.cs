@@ -30,6 +30,16 @@ public class UsuarioAdminConfiguration : IEntityTypeConfiguration<UsuarioAdmin>
             .HasMaxLength(50)
             .IsRequired();
 
+        builder.Property(u => u.Ativo)
+            .HasColumnName("ativo")
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(u => u.DeletadoEm)
+            .HasColumnName("deletado_em");
+
+        builder.HasQueryFilter(u => u.Ativo);
+
         builder.HasIndex(u => u.Email).IsUnique();
     }
 }

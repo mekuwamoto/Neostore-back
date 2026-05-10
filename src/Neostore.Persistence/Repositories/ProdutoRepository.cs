@@ -65,4 +65,26 @@ public class ProdutoRepository : Repository<Produto>, IProdutoRepository
             .Include(p => p.Imagens)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
+
+    public override async Task<bool> DeletarAsync(Guid id)
+    {
+        var produto = await _context.Produtos
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (produto == null) return false;
+
+        produto.Ativo = false;
+        produto.DeletadoEm = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<Produto?> ObterPorIdIncluindoInativoAsync(Guid id)
+    {
+        return await _context.Produtos
+            .IgnoreQueryFilters()
+            .Include(p => p.Imagens)
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
 }

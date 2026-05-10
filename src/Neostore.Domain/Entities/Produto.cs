@@ -1,6 +1,8 @@
+using Neostore.Domain.Interfaces;
+
 namespace Neostore.Domain.Entities;
 
-public class Produto
+public class Produto : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
@@ -10,6 +12,8 @@ public class Produto
     public string Descrição { get; set; } = string.Empty;
     public List<Imagem> Imagens { get; set; } = new();
     public int Estoque { get; set; }
+    public bool Ativo { get; set; } = true;
+    public DateTime? DeletadoEm { get; set; }
 
     public void AjustarEstoque(int quantidade)
     {

@@ -9,4 +9,5 @@ public interface IProdutoRepository : IRepository<Produto>
     Task<int> ContarTotalAsync(Guid? idCategoria = null, string? nome = null, string? sku = null);
     Task<bool> ExistePorSkuAsync(string sku, Guid? idExcluir = null);
     Task<Produto?> ObterComImagensAsync(Guid id);
+    Task<Produto?> ObterPorIdIncluindoInativoAsync(Guid id);
 }
