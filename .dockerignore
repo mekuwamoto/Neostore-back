@@ -23,6 +23,8 @@
 **/values.dev.yaml
 LICENSE
 README.md
+specs/
+src/Neostore.Tests/
 !**/.gitignore
 !.git/HEAD
 !.git/config
