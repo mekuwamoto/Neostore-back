@@ -161,6 +161,22 @@ Test structure:
 
 Coverage collected via Coverlet.
 
+## Specifications (ADRs)
+
+Architecture decisions and implementation specs live in `./specs/` — all in ADR format.
+
+| File | Decision |
+|------|----------|
+| `00-Introduçao.md` | Scope — API admin focused on product catalog |
+| `01-Definição esquemas adicionais sistema.md` | CQRS, MediatR, domain entities |
+| `02-Implementação cruds.md` | CRUD implementation status and pending items |
+| `03-soft-delete.md` | Soft delete strategy for Produto and UsuarioAdmin |
+| `04-middleware.md` | Serilog + ExceptionMiddleware + LoggingBehavior |
+| `05-swagger.md` | OpenAPI with Scalar UI |
+| `06-automapper.md` | AutoMapper for DTO mapping |
+
+ADR statuses: `Implemented` | `Partially Implemented` | `Proposed` | `Accepted`
+
 ## Git & CI/CD
 
 Branch strategy:
