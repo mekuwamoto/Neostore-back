@@ -28,10 +28,10 @@ This is an **ASP.NET Core Web API** (.NET 10) following **Clean Architecture** (
 | Project | Role |
 |---|---|
 | `Neostore.Api` | Presentation layer — controllers, middleware, DI composition root |
-| `Neostore.Application` | Use cases / application services |
-| `Neostore.Domain` | Core business entities and domain logic; no dependencies on other projects |
-| `Neostore.Infrastructure` | External services, cross-cutting concerns |
-| `Neostore.Persistence` | Data access (repositories, DB context) |
+| `Neostore.Application` | Use cases via CQRS (MediatR handlers, commands, queries, validators, DTOs) |
+| `Neostore.Domain` | Core business entities and domain logic; no external dependencies |
+| `Neostore.Infrastructure` | External services, cross-cutting concerns (currently minimal) |
+| `Neostore.Persistence` | EF Core DbContext, repository implementations, entity configurations |
 | `Neostore.Tests` | xUnit unit tests |
 
 **Dependency direction:** `Api → Application → Domain`; `Infrastructure` and `Persistence` both depend on `Domain` only. `Application` depends on `Infrastructure` and `Persistence` for DI registration purposes.
@@ -42,9 +42,90 @@ Each layer exposes an extension method in its own `DependencyInjection.cs`. `Sta
 
 When adding services to a layer, register them in that layer's `DependencyInjection.cs`, not in `Startup.cs`.
 
-### Testing
+## Domain Entities
 
-Tests use **xUnit**, **Moq**, and **AwesomeAssertions**, mas utiliza os mesmos métodos que o FluentAssertions. Não utilize Assert do XUnit Coverage is collected via Coverlet. 
+| Entity | Key Fields | Methods | Relations |
+|---|---|---|---|
+| `Categoria` | Id (Guid), Nome, Slug, IdCategoriaPai (Guid?) | `GerarSlug()`, `ValidarHierarquia()` | self-referencing parent |
+| `Produto` | Id (Guid), Nome, SKU, Preco (decimal), Estoque (int), IdCategoria (Guid), Imagens (List) | `AjustarEstoque()`, `AdicionarImagem()`, `RemoverImagem()` | Categoria (FK), Imagem (collection) |
+| `Imagem` | Id (Guid), NomeArquivo, ChaveS3, TipoConteudo, TamanhoBytes, IdProduto (Guid), DataCriacao | `ObterUrlS3()` | Produto (FK) |
+| `UsuarioAdmin` | Id (Guid), Email, SenhaHash, Role | `AtualizarSenha()` | — |
+
+All IDs are `Guid` assigned manually (`ValueGeneratedNever`).
+
+## CQRS Pattern (MediatR)
+
+Commands and queries live in `Neostore.Application/`. Each command/query is an immutable `record` implementing `IRequest<TResponse>`. Handlers implement `IRequestHandler<TRequest, TResponse>`.
+
+### Current Commands
+
+| Command | Handler | Returns |
+|---|---|---|
+| `CriarCategoriaCommand` | `CriarCategoriaCommandHandler` | `CategoriaDto` |
+| `AtualizarCategoriaCommand` | `AtualizarCategoriaCommandHandler` | `CategoriaDto` |
+| `DeletarCategoriaCommand` | `DeletarCategoriaCommandHandler` | `bool` |
+| `CriarProdutoCommand` | `CriarProdutoCommandHandler` | `ProdutoDto` |
+| `AtualizarProdutoCommand` | `AtualizarProdutoCommandHandler` | `ProdutoDto` |
+| `DeletarProdutoCommand` | `DeletarProdutoCommandHandler` | `bool` |
+| `AjustarEstoqueCommand` | `AjustarEstoqueCommandHandler` | `int` (new stock) |
+| `CriarUsuarioAdminCommand` | — | — |
+| `AtualizarSenhaCommand` | — | — |
+| `DeletarUsuarioAdminCommand` | — | — |
+
+### Current Queries
+
+| Query | Handler | Returns |
+|---|---|---|
+| `ObterTodasCategoriasQuery` | `ObterTodasCategoriasQueryHandler` | `List<CategoriaDto>` |
+| `ObterCategoriaPorIdQuery` | `ObterCategoriaPorIdQueryHandler` | `CategoriaDto?` |
+| `ObterTodosProdutosQuery` | `ObterTodosProdutosQueryHandler` | `List<ProdutoDto>` |
+| `ObterProdutoPorIdQuery` | `ObterProdutoPorIdQueryHandler` | `ProdutoDto?` |
+| `ObterProdutosPaginadoQuery` | `ObterProdutosPaginadoQueryHandler` | `ProdutosPaginadoDto` |
+| `ObterTodosUsuariosAdminQuery` | — | — |
+| `ObterUsuarioAdminPorIdQuery` | — | — |
+
+## Repository Pattern
+
+`Neostore.Persistence/Repositories/` provides:
+
+- `IRepository<T>` / `Repository<T>` — generic async CRUD (`ObterPorIdAsync`, `ObterTodosAsync`, `CriarAsync`, `AtualizarAsync`, `DeletarAsync`, `SaveChangesAsync`)
+- `ICategoriaRepository` — extends base + `ObterPorSlugAsync`, `ObterArvoreAsync`, `ObterRaizAsync`, `ExistePorNomeAsync`, `ContarProdutosAsync`, `ContarSubcategoriasAsync`
+- `IProdutoRepository` — extends base + `ObterPorSkuAsync`, `ObterPaginadoAsync`, `ContarTotalAsync`, `ExistePorSkuAsync`, `ObterComImagensAsync`
+
+## Persistence
+
+- **ORM:** EF Core 9.0.1 + Pomelo.EntityFrameworkCore.MySql 9.0.0
+- **DbContext:** `NeostoreDbContext` — 4 DbSets (Categorias, Produtos, Imagens, UsuariosAdmin)
+- **Configurations:** Fluent API in `Context/Configurations/` — applied via `ApplyConfigurationsFromAssembly()`
+  - `CategoriaConfiguration`: unique index on Nome+Slug; FK cascade = Restrict
+- **Migrations:** not yet generated (code-first, schema applied manually or via EnsureCreated)
+
+## Validation
+
+FluentValidation validators in `Neostore.Application/Validators/` — one per command. Integrated into MediatR pipeline; automatically validated before handler execution.
+
+## NuGet Packages
+
+| Project | Key Packages |
+|---|---|
+| `Neostore.Api` | Microsoft.AspNetCore.OpenApi 10.0.7 |
+| `Neostore.Application` | MediatR 11.1.0, FluentValidation 11.9.2 |
+| `Neostore.Domain` | *(none)* |
+| `Neostore.Infrastructure` | Microsoft.Extensions.Configuration.Abstractions 10.0.7 |
+| `Neostore.Persistence` | EF Core 9.0.1, Pomelo.EntityFrameworkCore.MySql 9.0.0 |
+| `Neostore.Tests` | xUnit 2.9.3, Moq 4.20.72, AwesomeAssertions 9.4.0, coverlet.collector 6.0.4 |
+
+## Testing
+
+Tests use **xUnit**, **Moq**, and **AwesomeAssertions**. AwesomeAssertions uses the same API as FluentAssertions. **Do not use `Assert` from xUnit.**
+Priorize regras de negócio e não tanto em implementação
+Test structure:
+- `Application/Handlers/Categoria/` — 5 handler test files
+- `Application/Handlers/Produto/` — 6 handler test files
+- `Application/Validators/` — CategoriaValidatorsTests, ProdutoValidatorsTests
+- `Domain/` — CategoriaTests, ProdutoTests, ImagemTests, UsuarioAdminTests
+
+Coverage collected via Coverlet.
 
 ## Git & CI/CD
 
@@ -56,12 +137,16 @@ Branch strategy:
 
 Workflows are in `.github/workflows/`. Both pipelines run `restore → build (Release) → test` before creating the PR.
 
-
 ## Padrão de nomenclatura de variáveis
-A nomenclatura de id estrangeiro será sempre Id + entidade.
-Ex:
+
+FK naming: `Id` + nome da entidade.
+
 ```
 IdCategoria
 IdProduto
 IdUsuario
 ```
+
+## Tipagem de variáveis
+
+Sempre utilize tipos explícitos. Nunca utilize `var`.
