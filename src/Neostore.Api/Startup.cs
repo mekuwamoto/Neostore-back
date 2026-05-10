@@ -1,5 +1,7 @@
 using Neostore.Api.Middlewares;
 using Neostore.Api.Services;
+using Scalar.AspNetCore;
+using Serilog;
 
 namespace Neostore.Api;
 public static class Startup
@@ -8,12 +10,18 @@ public static class Startup
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
         {
+            builder.Host.UseSerilog((context, config) =>
+                config.ReadFrom.Configuration(context.Configuration));
+
             builder.Services.AddServices(builder.Configuration);
         }
 
         WebApplication app = builder.Build();
         {
+            app.UseSerilogRequestLogging();
             app.ConfigureMiddlewares();
+            app.MapOpenApi();
+            app.MapScalarApiReference();
             app.MapControllers();
             app.Run();
         }
