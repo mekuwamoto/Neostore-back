@@ -44,7 +44,7 @@ When adding services to a layer, register them in that layer's `DependencyInject
 
 ### Testing
 
-Tests use **xUnit**, **Moq**, and **AwesomeAssertions**. Coverage is collected via Coverlet. 
+Tests use **xUnit**, **Moq**, and **AwesomeAssertions**, mas utiliza os mesmos métodos que o FluentAssertions. Não utilize Assert do XUnit Coverage is collected via Coverlet. 
 
 ## Git & CI/CD
 
@@ -55,3 +55,13 @@ Branch strategy:
 - `main` → production/stable
 
 Workflows are in `.github/workflows/`. Both pipelines run `restore → build (Release) → test` before creating the PR.
+
+
+## Padrão de nomenclatura de variáveis
+A nomenclatura de id estrangeiro será sempre Id + entidade.
+Ex:
+```
+IdCategoria
+IdProduto
+IdUsuario
+```
