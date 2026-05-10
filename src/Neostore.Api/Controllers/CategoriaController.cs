@@ -1,0 +1,82 @@
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Neostore.Application.Commands.Categoria;
+using Neostore.Application.DTOs;
+using Neostore.Application.Queries.Categoria;
+
+namespace Neostore.Api.Controllers;
+
+[ApiController]
+[Route("api/admin/categorias")]
+public class CategoriaController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public CategoriaController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<CategoriaDto>> Criar([FromBody] CriarCategoriaCommand command)
+    {
+        try
+        {
+            var resultado = await _mediator.Send(command);
+            return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<CategoriaDto>>> ObterArvore()
+    {
+        var resultado = await _mediator.Send(new ObterTodasCategoriasQuery());
+        return Ok(resultado);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<CategoriaDto>> ObterPorId(Guid id)
+    {
+        var resultado = await _mediator.Send(new ObterCategoriaPorIdQuery(id));
+        if (resultado == null)
+            return NotFound();
+
+        return Ok(resultado);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<CategoriaDto>> Atualizar(Guid id, [FromBody] AtualizarCategoriaCommand command)
+    {
+        try
+        {
+            var commandComId = new AtualizarCategoriaCommand(id, command.Nome, command.IdCategoriaPai);
+            var resultado = await _mediator.Send(commandComId);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Deletar(Guid id)
+    {
+        try
+        {
+            var resultado = await _mediator.Send(new DeletarCategoriaCommand(id));
+            if (!resultado)
+                return NotFound();
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { erro = ex.Message });
+        }
+    }
+}
