@@ -86,7 +86,6 @@ Para cada entidade, a implementação deve seguir esta ordem lógica para garant
 
 ## 6. Pendências
 
-- [ ] **Soft-Delete de Produto:** Adicionar campo `Ativo` ou `DeletadoEm` na entidade `Produto`, criar migration, ajustar repositório para filtrar inativo nas queries de leitura e alterar `DeletarProdutoCommandHandler` para marcar inativo ao invés de deletar.
 - [ ] **Listar Raiz (Categorias):** Criar `ObterRaizQuery`, `ObterRaizQueryHandler` e expor endpoint `GET /api/admin/categorias/raiz` usando `ObterRaizAsync` já existente no `ICategoriaRepository`.
 - [ ] **Verificar Disponibilidade (Produto):** Criar `ObterEstoqueQuery`, handler e endpoint `GET /api/admin/produtos/{id}/disponibilidade` retornando apenas `{ id, estoque }`.
 - [ ] **Logs de Auditoria:** Definir estratégia (middleware, interceptor EF Core, ou decorator MediatR) e implementar registro de operações.
