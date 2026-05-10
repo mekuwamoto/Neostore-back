@@ -112,7 +112,7 @@ public class ImagemTests
         imagem.Id.Should().Be(Guid.Empty);
         imagem.NomeArquivo.Should().BeEmpty();
         imagem.ChaveS3.Should().BeEmpty();
-        imagem.TipoConteudo.Should().BeEmpty();
+        imagem.TipoConteudo.Should().BeNull();
         imagem.TamanhoBytes.Should().Be(0);
         imagem.IdProduto.Should().Be(Guid.Empty);
     }
