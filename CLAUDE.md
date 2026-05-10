@@ -104,21 +104,55 @@ Commands and queries live in `Neostore.Application/`. Each command/query is an i
 
 FluentValidation validators in `Neostore.Application/Validators/` — one per command. Integrated into MediatR pipeline; automatically validated before handler execution.
 
+## AutoMapper
+
+`MappingProfile` in `Neostore.Application/Mappings/MappingProfile.cs` maps:
+- `Categoria → CategoriaDto`
+- `Produto → ProdutoDto`
+- `Imagem → ImagemDto`
+
+Registered via `services.AddAutoMapper(typeof(DependencyInjection).Assembly)` in `Neostore.Application/DependencyInjection.cs`.
+
+Always use the two-type-param overload:
+```csharp
+mapper.Map<TSource, TDestination>(source)
+```
+
+In tests, instantiate a real mapper — do not mock with Moq:
+```csharp
+IMapper mapper = new MapperConfiguration(cfg =>
+    cfg.AddProfile<MappingProfile>()).CreateMapper();
+```
+
+## Middleware and Logging
+
+- **`ExceptionMiddleware`** (`Neostore.Api/Middlewares/`) — centralizes error handling: `InvalidOperationException` → 400, unhandled exceptions → 500. Controllers have no `try/catch`.
+- **`LoggingBehavior<TRequest, TResponse>`** (`Neostore.Application/Behaviors/`) — MediatR pipeline behavior that logs every command/query start, completion, and elapsed time.
+- **Serilog** configured in `Startup.cs` via `UseSerilog()`. Sinks: Console + rolling File (`logs/neostore-.log`, 7-day retention). Config lives in `appsettings.json` under `"Serilog"`.
+
+## API Documentation
+
+- **Spec:** `GET /openapi/v1.json` (Microsoft.AspNetCore.OpenApi)
+- **UI:** `GET /scalar/v1` (Scalar.AspNetCore)
+- Controllers annotated with `[ProducesResponseType]` for all response codes.
+
 ## NuGet Packages
 
 | Project | Key Packages |
 |---|---|
-| `Neostore.Api` | Microsoft.AspNetCore.OpenApi 10.0.7 |
-| `Neostore.Application` | MediatR 11.1.0, FluentValidation 11.9.2 |
+| `Neostore.Api` | Microsoft.AspNetCore.OpenApi 10.0.7, Scalar.AspNetCore 2.14.11, Serilog.AspNetCore 10.0.0, Serilog.Sinks.Console 6.1.1, Serilog.Sinks.File 7.0.0 |
+| `Neostore.Application` | MediatR 11.1.0, MediatR.Extensions.Microsoft.DependencyInjection 11.1.0, FluentValidation 11.9.2, FluentValidation.DependencyInjectionExtensions 11.9.2, AutoMapper 16.1.1 |
 | `Neostore.Domain` | *(none)* |
-| `Neostore.Infrastructure` | Microsoft.Extensions.Configuration.Abstractions 10.0.7 |
-| `Neostore.Persistence` | EF Core 9.0.1, Pomelo.EntityFrameworkCore.MySql 9.0.0 |
-| `Neostore.Tests` | xUnit 2.9.3, Moq 4.20.72, AwesomeAssertions 9.4.0, coverlet.collector 6.0.4 |
+| `Neostore.Infrastructure` | Microsoft.Extensions.Configuration.Abstractions 10.0.7, Microsoft.Extensions.DependencyInjection.Abstractions 10.0.7 |
+| `Neostore.Persistence` | EF Core 9.0.1, Pomelo.EntityFrameworkCore.MySql 9.0.0, Microsoft.Extensions.Configuration.Abstractions 10.0.7 |
+| `Neostore.Tests` | xUnit 2.9.3, xunit.runner.visualstudio 3.1.4, Moq 4.20.72, AwesomeAssertions 9.4.0, coverlet.collector 6.0.4, Microsoft.NET.Test.Sdk 17.14.1 |
 
 ## Testing
 
 Tests use **xUnit**, **Moq**, and **AwesomeAssertions**. AwesomeAssertions uses the same API as FluentAssertions. **Do not use `Assert` from xUnit.**
-Priorize regras de negócio e não tanto em implementação
+
+Prioritize business rules over implementation details.
+
 Test structure:
 - `Application/Handlers/Categoria/` — 5 handler test files
 - `Application/Handlers/Produto/` — 6 handler test files
