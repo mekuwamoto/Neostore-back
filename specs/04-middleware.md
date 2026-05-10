@@ -1,77 +1,49 @@
-# Plano de Implementação: Middleware de Logs
+# ADR-04: Logging Estruturado e Middleware de Exceções
 
-Este documento especifica o roteiro técnico para implementar logging estruturado e middleware de auditoria conforme o requisito transversal definido em `02-Implementação cruds.md`:
+## Status
+Proposed
 
-> **Logs:** Registrar: Usuário Executor, Operação, Data/Hora, Id do Registro afetado.
-> **Tratamento de Erros:** Exceções de negócio → `400 Bad Request`. Erros de sistema → `500`.
+## Date
+2025-01-01
 
----
+## Context
+ADR-02 define requisito transversal pendente: registrar usuário executor, operação, timestamp e id do registro em cada operação CRUD. Atualmente, tratamento de erros está disperso em `try/catch` nos controllers — duplicação e comportamento inconsistente.
 
-### Serilog
+## Decision
+Adotar **Serilog** para logging estruturado + **ExceptionMiddleware** centralizado + **MediatR Pipeline Behavior** para auditoria de commands/queries.
 
-| Aspecto | Detalhe |
-| :------ | :------ |
-| **Pacotes** | `Serilog.AspNetCore`, `Serilog.Sinks.Console`, `Serilog.Sinks.File` |
-| **Estilo** | Logging estruturado (propriedades tipadas, não concatenação de string) |
-| **Sinks** | Console, arquivo, Seq, Elasticsearch, Application Insights, CloudWatch |
-| **Integração** | `UseSerilog()` substitui o logger padrão do ASP.NET Core |
-| **Enriquecimento** | `Enrich.FromLogContext()` propaga propriedades entre camadas automaticamente |
-| **Custo** | Gratuito (MIT) |
+### Justificativa: Serilog
+
+| Critério | Serilog |
+| -------- | ------- |
+| Logging estruturado nativo | ✅ Propriedades tipadas, indexáveis em qualquer sink |
+| Integração ASP.NET Core | `UseSerilog()` substitui `ILogger<T>` padrão — zero mudança nos handlers |
+| Configuração | Via `appsettings.json` — troca de sink sem alterar código |
+| Custo | Gratuito (MIT) |
+
+### Pacotes
 
 ```bash
+# Neostore.Api
 dotnet add package Serilog.AspNetCore
 dotnet add package Serilog.Sinks.Console
 dotnet add package Serilog.Sinks.File
 ```
 
-
-### Decisão
-
-**Serilog** é a escolha para este projeto pelos seguintes motivos:
-- Logging **estruturado** nativo — propriedades ficam indexáveis em qualquer sink
-- Configuração simples via `appsettings.json`
-- Substitui o `ILogger<T>` do ASP.NET Core — zero mudança nos handlers existentes
-- Troca de sink (console → arquivo → Seq) sem alterar código
-
----
-
-## Passo 1 — Instalar pacotes
-
-```bash
-# Em src/Neostore.Api
-dotnet add package Serilog.AspNetCore
-dotnet add package Serilog.Sinks.Console
-dotnet add package Serilog.Sinks.File
-
-# Em src/Neostore.Application (para o Pipeline Behavior)
-# Sem pacote extra — usa Microsoft.Extensions.Logging já transitivo
-```
-
----
-
-## Passo 2 — Configurar Serilog no `Startup.cs`
-
-**`Neostore.Api/Startup.cs`:**
+### Configuração Serilog (`Startup.cs`)
 
 ```csharp
-using Serilog;
-
-// Antes de builder.Build()
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 ```
 
-**`appsettings.json`** — adicionar seção:
-
+**`appsettings.json`:**
 ```json
 {
   "Serilog": {
     "MinimumLevel": {
       "Default": "Information",
-      "Override": {
-        "Microsoft": "Warning",
-        "System": "Warning"
-      }
+      "Override": { "Microsoft": "Warning", "System": "Warning" }
     },
     "WriteTo": [
       { "Name": "Console" },
@@ -89,11 +61,7 @@ builder.Host.UseSerilog((context, config) =>
 }
 ```
 
----
-
-## Passo 3 — Middleware global de exceções
-
-Criar `Neostore.Api/Middlewares/ExceptionMiddleware.cs`:
+### ExceptionMiddleware (`Neostore.Api/Middlewares/ExceptionMiddleware.cs`)
 
 ```csharp
 public class ExceptionMiddleware
@@ -129,21 +97,14 @@ public class ExceptionMiddleware
 }
 ```
 
-Registrar em `MiddlewareConfiguration.cs`:
-
+Registro em `MiddlewareConfiguration.cs`:
 ```csharp
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 ```
 
-Com isso, os `try/catch` nos controllers podem ser **removidos** — o middleware centraliza o tratamento.
-
----
-
-## Passo 4 — MediatR Pipeline Behavior de auditoria
-
-Criar `Neostore.Application/Behaviors/LoggingBehavior.cs`:
+### LoggingBehavior (`Neostore.Application/Behaviors/LoggingBehavior.cs`)
 
 ```csharp
 public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
@@ -161,69 +122,62 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        var operacao = typeof(TRequest).Name;
+        string operacao = typeof(TRequest).Name;
 
-        _logger.LogInformation(
-            "Iniciando operação {Operacao} | Dados: {@Request}",
-            operacao, request);
+        _logger.LogInformation("Iniciando operação {Operacao} | Dados: {@Request}", operacao, request);
 
-        var stopwatch = Stopwatch.StartNew();
-
-        var response = await next();
-
+        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        TResponse response = await next();
         stopwatch.Stop();
 
-        _logger.LogInformation(
-            "Operação {Operacao} concluída em {ElapsedMs}ms",
-            operacao, stopwatch.ElapsedMilliseconds);
+        _logger.LogInformation("Operação {Operacao} concluída em {ElapsedMs}ms", operacao, stopwatch.ElapsedMilliseconds);
 
         return response;
     }
 }
 ```
 
-Registrar em `Neostore.Application/DependencyInjection.cs`:
-
+Registro em `Neostore.Application/DependencyInjection.cs`:
 ```csharp
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 ```
 
----
-
-## Passo 5 — Simplificar controllers
-
-Com `ExceptionMiddleware` ativo, os `try/catch` dos controllers tornam-se redundantes. Os controllers ficam:
-
+### Impacto nos Controllers
+Com `ExceptionMiddleware` ativo, remover todos os `try/catch` dos controllers:
 ```csharp
 [HttpPost]
 public async Task<ActionResult<ProdutoDto>> Criar([FromBody] CriarProdutoCommand command)
 {
-    var resultado = await _mediator.Send(command);
+    ProdutoDto resultado = await _mediator.Send(command);
     return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
 }
 ```
 
----
+## Consequences
+### Positivo
+- Tratamento de erros centralizado — controllers mais simples.
+- Logging estruturado permite indexação e alertas em qualquer sink (Seq, CloudWatch, etc.).
+- `LoggingBehavior` registra automaticamente toda operação MediatR sem modificar handlers.
 
-## Sequência de execução
+### Trade-offs
+- Serilog adiciona dependência externa (mitigado: MIT, amplamente adotado).
+- `LoggingBehavior` loga payload completo do request — dados sensíveis devem ser anonimizados futuramente.
 
-```
-1. Passo 1 → Instalar pacotes (Serilog)
-2. Passo 2 → Configurar Serilog em Startup.cs + appsettings.json
-3. Passo 3 → Criar ExceptionMiddleware + registrar em MiddlewareConfiguration
-4. Passo 4 → Criar LoggingBehavior + registrar em DependencyInjection
-5. Passo 5 → Remover try/catch dos controllers
-6. Testes: verificar que InvalidOperationException → 400, Exception → 500
-```
-
----
-
-## O que cada camada registra
+## Responsabilidades por Camada
 
 | Evento | Nível | Responsável |
-| :----- | :---- | :---------- |
+| ------ | ----- | ----------- |
 | Requisição HTTP recebida | `Information` | Serilog built-in (`UseSerilogRequestLogging`) |
 | Início de Command/Query | `Information` | `LoggingBehavior` |
 | Conclusão de Command/Query | `Information` | `LoggingBehavior` |
 | Erro de negócio (`InvalidOperationException`) | `Warning` | `ExceptionMiddleware` |
-| Erro de sistema (exceção não tratada) | `Error` | `ExceptionMiddleware` |
+| Erro de sistema | `Error` | `ExceptionMiddleware` |
+
+## Sequência de Implementação
+
+1. Instalar pacotes Serilog
+2. Configurar `UseSerilog()` em `Startup.cs` + seção no `appsettings.json`
+3. Criar `ExceptionMiddleware` + registrar em `MiddlewareConfiguration`
+4. Criar `LoggingBehavior` + registrar em `DependencyInjection`
+5. Remover `try/catch` dos controllers
+6. Verificar: `InvalidOperationException` → 400; exceção genérica → 500

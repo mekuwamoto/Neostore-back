@@ -1,24 +1,29 @@
-# Plano de Implementação: Soft Delete
+# ADR-03: Soft Delete em Produto e UsuarioAdmin
 
-Este documento detalha o roteiro técnico para implementar soft delete nas entidades do sistema, substituindo a exclusão física (hard delete) por exclusão lógica (marcar como inativo).
+## Status
+Proposed
 
-## Escopo
+## Date
+2025-01-01
+
+## Context
+`DeletarProdutoCommand` executa hard-delete. Pedidos futuros referenciam produtos — excluir fisicamente quebraria histórico. Mesmo raciocínio para `UsuarioAdmin` e trilha de auditoria.
+
+`Categoria` usa hard-delete e permanece assim: a exclusão já é bloqueada por regras de negócio quando existem produtos ou subcategorias vinculadas.
+
+## Decision
+Implementar **soft-delete** via interface `ISoftDeletable` + `HasQueryFilter` no EF Core.
 
 | Entidade | Soft Delete | Justificativa |
-| :------- | :---------- | :------------ |
-| `Produto` | ✅ Sim | Preservar histórico de pedidos futuros |
-| `Categoria` | ❌ Não | Exclusão já bloqueada por regras de negócio (produtos/subcategorias) |
-| `UsuarioAdmin` | ✅ Sim | Preservar histórico de auditoria |
+| -------- | ----------- | ------------- |
+| `Produto` | ✅ Sim | Preservar histórico de pedidos |
+| `UsuarioAdmin` | ✅ Sim | Preservar trilha de auditoria |
+| `Categoria` | ❌ Não | Exclusão bloqueada por regras de negócio |
 
----
-
-## Passo 1 — Domínio (`Neostore.Domain`)
-
-### 1.1 Adicionar interface `ISoftDeletable`
-
-Criar arquivo `Neostore.Domain/Interfaces/ISoftDeletable.cs`:
+### Campos adicionados
 
 ```csharp
+// Neostore.Domain/Interfaces/ISoftDeletable.cs
 public interface ISoftDeletable
 {
     bool Ativo { get; set; }
@@ -26,58 +31,27 @@ public interface ISoftDeletable
 }
 ```
 
-### 1.2 Implementar `ISoftDeletable` nas entidades
-
-**`Produto.cs`** — adicionar propriedades:
+`Produto` e `UsuarioAdmin` implementam `ISoftDeletable`:
 ```csharp
 public bool Ativo { get; set; } = true;
 public DateTime? DeletadoEm { get; set; }
 ```
 
-**`UsuarioAdmin.cs`** — adicionar propriedades:
+### Persistência
+
+**EF Core Configurations** (`ProdutoConfiguration`, `UsuarioAdminConfiguration`):
 ```csharp
-public bool Ativo { get; set; } = true;
-public DateTime? DeletadoEm { get; set; }
+builder.Property(p => p.Ativo).HasColumnName("ativo").IsRequired().HasDefaultValue(true);
+builder.Property(p => p.DeletadoEm).HasColumnName("deletado_em");
+builder.HasQueryFilter(p => p.Ativo);  // filtra automaticamente em todas as queries
 ```
 
----
-
-## Passo 2 — Persistência (`Neostore.Persistence`)
-
-### 2.1 Atualizar Fluent API Configurations
-
-**`ProdutoConfiguration.cs`** — adicionar mapeamento:
-```csharp
-builder.Property(p => p.Ativo)
-    .HasColumnName("ativo")
-    .IsRequired()
-    .HasDefaultValue(true);
-
-builder.Property(p => p.DeletadoEm)
-    .HasColumnName("deletado_em");
-
-// Filtro global: queries automáticas ignoram inativos
-builder.HasQueryFilter(p => p.Ativo);
-```
-
-**`UsuarioAdminConfiguration.cs`** — mesma estrutura.
-
-### 2.2 Atualizar `IProdutoRepository`
-
-Adicionar método para buscar incluindo inativos (para auditoria/admin):
-```csharp
-Task<Produto?> ObterPorIdIncluindoInativoAsync(Guid id);
-Task<List<Produto>> ObterTodosIncluindoInativosAsync();
-```
-
-### 2.3 Atualizar `ProdutoRepository`
-
-Implementar soft delete sobrescrevendo `DeletarAsync`:
+**`ProdutoRepository.DeletarAsync`** — sobrescreve base:
 ```csharp
 public override async Task<bool> DeletarAsync(Guid id)
 {
-    var produto = await _context.Produtos
-        .IgnoreQueryFilters()  // busca mesmo se inativo
+    Produto? produto = await _context.Produtos
+        .IgnoreQueryFilters()
         .FirstOrDefaultAsync(p => p.Id == id);
 
     if (produto == null) return false;
@@ -89,88 +63,55 @@ public override async Task<bool> DeletarAsync(Guid id)
 }
 ```
 
-Implementar métodos adicionais com `IgnoreQueryFilters()` para consultas admin.
-
 Mesma lógica para `UsuarioAdminRepository`.
 
-### 2.4 Gerar Migration
+**Métodos adicionais** para auditoria admin (com `IgnoreQueryFilters()`):
+```csharp
+Task<Produto?> ObterPorIdIncluindoInativoAsync(Guid id);
+Task<List<Produto>> ObterTodosIncluindoInativosAsync();
+```
 
+### Application e API
+Nenhuma mudança necessária em handlers ou controllers:
+- `HasQueryFilter` filtra automaticamente — handlers de leitura retornam `null` para inativos → controller retorna `404`.
+- `DELETE` mantém contrato HTTP: `204 No Content` (soft-delete realizado) ou `404 Not Found`.
+
+### Migration
 ```bash
 dotnet ef migrations add AddSoftDelete --project Neostore.Persistence --startup-project Neostore.Api
 ```
+Adiciona colunas `ativo` (boolean NOT NULL DEFAULT true) e `deletado_em` (datetime nullable) em `produtos` e `usuarios_admin`.
 
-Migration deve adicionar colunas `ativo` (boolean NOT NULL DEFAULT true) e `deletado_em` (datetime nullable) nas tabelas `produtos` e `usuarios_admin`.
+## Consequences
+### Positivo
+- Histórico de produtos preservado para pedidos futuros.
+- Filtro global no EF Core elimina vazamentos em queries LINQ.
+- SKU pode ser reutilizado após soft-delete.
+- Handlers e controllers não precisam de alteração.
 
----
+### Trade-offs
+- Necessário `IgnoreQueryFilters()` explícito em métodos de auditoria para acessar registros inativos.
+- Migration adicional necessária.
+- Banco cresce ao longo do tempo (registros nunca removidos fisicamente).
 
-## Passo 3 — Application (`Neostore.Application`)
-
-### 3.1 Atualizar `DeletarProdutoCommandHandler`
-
-Comportamento muda automaticamente: o repositório já faz soft delete. Nenhuma mudança necessária no handler, desde que o repositório sobrescreva `DeletarAsync`.
-
-### 3.2 Atualizar `ObterProdutosPaginadoQueryHandler`
-
-O `HasQueryFilter` no EF Core já filtra `Ativo = true` automaticamente em todas as queries LINQ. Nenhuma mudança necessária.
-
-### 3.3 Atualizar `ObterProdutoPorIdQueryHandler`
-
-O filtro global cobre. Produto deletado retorna `null` → controller retorna `404`. Nenhuma mudança necessária.
-
-### 3.4 Verificar `ExistePorSkuAsync` no repositório
-
-Garantir que a verificação de SKU único **ignora produtos inativos**:
-```csharp
-// O HasQueryFilter já resolve, mas verificar se ExistePorSkuAsync
-// usa o DbSet filtrado ou IgnoreQueryFilters()
-```
-
----
-
-## Passo 4 — API (`Neostore.Api`)
-
-### 4.1 Nenhuma mudança nos controllers
-
-O comportamento do `DELETE` permanece igual do ponto de vista HTTP:
-- `204 No Content` → soft delete realizado
-- `404 Not Found` → produto não encontrado (ou já deletado)
-
----
-
-## Passo 5 — Testes
-
-### 5.1 Atualizar testes existentes
-
-**`DeletarProdutoCommandHandlerTests`** — os testes continuam válidos pois testam o handler que chama `DeletarAsync`. Verificar que o mock está correto.
-
-### 5.2 Adicionar testes para o repositório
-
-Criar `Neostore.Tests/Application/Handlers/Produto/SoftDeleteIntegrationTests.cs` (ou testes de repositório separados):
-- Produto deletado não aparece em `ObterPaginadoAsync`
-- Produto deletado não aparece em `ObterPorIdAsync`
-- `ExistePorSkuAsync` ignora produto deletado (SKU pode ser reutilizado)
-- `DeletarAsync` seta `Ativo = false` e `DeletadoEm` com data UTC
-
----
-
-## Sequência de execução
-
-```
-1. Passo 1 → Domínio (entidades + interface)
-2. Passo 2.1 → Configurations (mapeamento EF)
-3. Passo 2.2/2.3 → Repositórios (DeletarAsync + métodos adicionais)
-4. Passo 2.4 → Migration
-5. Passo 5.1/5.2 → Testes
-6. Smoke test manual via Swagger
-```
-
----
-
-## Decisões de design
+## Decisões de Design
 
 | Decisão | Escolha | Alternativa descartada |
-| :------- | :------ | :--------------------- |
-| Campo de controle | `Ativo: bool` + `DeletadoEm: DateTime?` | `Ativo: bool` |
+| ------- | ------- | ---------------------- |
+| Campo de controle | `Ativo: bool` + `DeletadoEm: DateTime?` | Somente `Ativo: bool` |
 | Filtro automático | `HasQueryFilter` no EF Core | Filtro manual em cada query — propenso a vazamentos |
-| Reutilização de SKU | Permitida após soft delete | Proibir — conflito com histórico de pedidos |
-| Acesso a registros inativos | `IgnoreQueryFilters()` em métodos específicos de auditoria | Rota admin separada — over-engineering |
+| Reutilização de SKU | Permitida após soft-delete | Proibir — conflito com histórico de pedidos |
+| Acesso a inativos | `IgnoreQueryFilters()` em métodos específicos | Rota admin separada — over-engineering |
+
+## Sequência de Implementação
+
+1. Domínio: `ISoftDeletable` + campos em `Produto` e `UsuarioAdmin`
+2. Persistência: Configurations (mapeamento EF) + `DeletarAsync` + métodos adicionais
+3. Migration: `dotnet ef migrations add AddSoftDelete`
+4. Testes: atualizar `DeletarProdutoCommandHandlerTests` + testes de repositório
+
+## Testes Necessários
+- Produto deletado não aparece em `ObterPaginadoAsync`
+- Produto deletado não aparece em `ObterPorIdAsync`
+- `ExistePorSkuAsync` ignora produto deletado (SKU reutilizável)
+- `DeletarAsync` seta `Ativo = false` e `DeletadoEm` com timestamp UTC

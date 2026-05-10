@@ -1,35 +1,50 @@
-# Neostore – Visão Geral e Escopo
+# ADR-00: Escopo Inicial — API de Catálogo Admin
 
-## Objetivo Principal
-Focar na criação de uma API robusta para **cadastro de itens** (produtos) que será a base do catálogo. Essa funcionalidade será implementada primeiro, permitindo depois expandir para carrinho, checkout e demais recursos.
+## Status
+Accepted
 
-## Modelo de Dados Simplificado
-- **Produto**: `Id`, `Nome`, `SKU`, `Preço`, `idCategoria`, `Descrição`, `Imagens` (array), `Estoque`
-- **Categoria**: `Id`, `Nome`, `Slug`, `idCategoriaPai`
-- **Usuário Admin**: `Id`, `Email`, `SenhaHash`, `Role`
+## Date
+2025-01-01
 
-## Endpoints Essenciais (API Admin)
-| Método | Caminho                            | Descrição                                                         |
-| ------ | ---------------------------------- | ----------------------------------------------------------------- |
-| POST   | `/api/admin/produtos`              | Criar produto – recebe JSON com os campos acima e grava no banco. |
-| GET    | `/api/admin/produtos/{id}`         | Recupera detalhes de um produto pelo `Id`.                        |
-| PUT    | `/api/admin/produtos/{id}`         | Atualiza todos os campos de um produto existente.                 |
-| PATCH  | `/api/admin/produtos/{id}/estoque` | Ajusta apenas a quantidade em estoque (`Estoque`).                |
-| DELETE | `/api/admin/produtos/{id}`         | Remove o produto do catálogo (soft‑delete opcional).              |
+## Context
+Neostore precisa de uma plataforma e-commerce. Ponto de entrada mais crítico: cadastro e gestão de produtos. Funcionalidades de carrinho, checkout e pagamento dependem de um catálogo estável.
 
-## Segurança e Boas Práticas na API de Cadastro
-- Autenticação JWT para endpoints administrativos.
-- Validação de entrada com `DataAnnotations` + `FluentValidation`.
-- Proteção contra injeções SQL através de EF Core.
-- Logging auditável das operações CRUD (usuário, timestamp, dados alterados).
+## Decision
+Construir primeiro uma **API admin REST** (.NET 10, ASP.NET Core) focada em gestão de catálogo. Escopo inicial:
 
-## Fluxo de Trabalho Inicial
-1. **Definir o esquema de banco** no MariaDB e gerar migrations EF Core.
-2. **Implementar** os endpoints acima na API .NET 10.
-3. **Testes unitários** para cada endpoint usando xUnit/Moq.
-4. **Documentação Swagger/OpenAPI** auto‑gerada.
-5. **Deploy local** (Docker Compose) e verificação funcional.
+- CRUD de Produtos (`/api/admin/produtos`)
+- CRUD de Categorias (`/api/admin/categorias`)
+- Gestão de Usuários Admin (`/api/admin/usuarios`)
 
-[[01-Definição esquemas adicionais sistema]]
-[[02-Implementação cruds]]
+### Endpoints Essenciais (Produtos)
 
+| Método | Caminho | Descrição |
+| ------ | ------- | --------- |
+| `POST` | `/api/admin/produtos` | Criar produto |
+| `GET` | `/api/admin/produtos/{id}` | Detalhes por Id |
+| `PUT` | `/api/admin/produtos/{id}` | Atualizar produto |
+| `PATCH` | `/api/admin/produtos/{id}/estoque` | Ajustar estoque |
+| `DELETE` | `/api/admin/produtos/{id}` | Remover produto |
+
+### Stack Definida
+- **Runtime:** .NET 10 / ASP.NET Core
+- **ORM:** EF Core + Pomelo (MariaDB)
+- **Arquitetura:** Clean Architecture (Onion)
+- **CQRS:** MediatR
+- **Validação:** FluentValidation
+- **Testes:** xUnit + Moq + AwesomeAssertions
+- **Infra local:** Docker Compose (MariaDB)
+
+## Consequences
+### Positivo
+- Catálogo funcional antes de depender de pedidos/checkout.
+- API admin isolada facilita controle de acesso (JWT admin-only).
+- Arquitetura limpa permite adicionar módulos sem reescrever core.
+
+### Trade-offs
+- Carrinho e checkout ficam fora do escopo inicial.
+- Integração S3 (imagens) planejada mas não implementada na primeira fase.
+
+## Próximos ADRs
+- [ADR-01](01-Definição%20esquemas%20adicionais%20sistema.md) — Arquitetura CQRS, MediatR e Entidades
+- [ADR-02](02-Implementação%20cruds.md) — Implementação dos CRUDs

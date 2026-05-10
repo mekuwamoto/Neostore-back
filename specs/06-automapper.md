@@ -1,40 +1,34 @@
-# 06 — AutoMapper
+# ADR-06: AutoMapper para Mapeamento de DTOs
 
-## Objetivo
+## Status
+Implemented
 
-Substituir todos os mapeamentos manuais (new DTO { ... }) por AutoMapper, centralizando as regras de conversão em `MappingProfile` e injetando `IMapper` nos handlers.
+## Date
+2025-01-01
+
+## Context
+Handlers de produto e categoria tinham mapeamentos manuais (`new ProdutoDto { ... }`) e métodos estáticos `MapToProdutoDto()` duplicados em cada handler. Qualquer novo campo na entidade exige atualização em múltiplos handlers.
+
+## Decision
+Usar **AutoMapper** para centralizar mapeamentos em `MappingProfile`, injetando `IMapper` nos handlers.
 
 **Regra obrigatória:** Sempre usar a sobrecarga com dois type params:
 ```csharp
 mapper.Map<TSource, TDestination>(source)
 ```
-Nunca usar `mapper.Map<TDestination>(source)` (omite TSource).
+Nunca usar `mapper.Map<TDestination>(source)` (omite TSource — reduz clareza e dificulta debugging).
 
----
-
-## Passo 1 — Instalar pacote
-
-Projeto: `Neostore.Application`
+### Pacote
 
 ```bash
 dotnet add src/Neostore.Application/Neostore.Application.csproj package AutoMapper
 ```
 
-> Não instalar `AutoMapper.Extensions.Microsoft.DependencyInjection` — o AutoMapper 13+ registra direto via `AddAutoMapper()`.
+> Não instalar `AutoMapper.Extensions.Microsoft.DependencyInjection` — AutoMapper 13+ registra diretamente via `AddAutoMapper()`.
 
----
-
-## Passo 2 — Criar MappingProfile
-
-Arquivo: `src/Neostore.Application/Mappings/MappingProfile.cs`
+### MappingProfile (`Neostore.Application/Mappings/MappingProfile.cs`)
 
 ```csharp
-using AutoMapper;
-using Neostore.Application.DTOs;
-using Neostore.Domain.Entities;
-
-namespace Neostore.Application.Mappings;
-
 public class MappingProfile : Profile
 {
     public MappingProfile()
@@ -46,130 +40,72 @@ public class MappingProfile : Profile
 }
 ```
 
-Todos os campos têm nomes idênticos entre entidade e DTO → zero `.ForMember()` necessário.
+Todos os campos têm nomes idênticos entre entidade e DTO — zero `.ForMember()` necessário.
 
----
-
-## Passo 3 — Registrar no DI
-
-Arquivo: `src/Neostore.Application/DependencyInjection.cs`
-
-Adicionar dentro de `AddApplication()`:
+### Registro DI (`Neostore.Application/DependencyInjection.cs`)
 
 ```csharp
 services.AddAutoMapper(typeof(DependencyInjection).Assembly);
 ```
 
-Isso escaneia o assembly e registra todos os `Profile` automaticamente.
+Escaneia o assembly e registra todos os `Profile` automaticamente.
 
----
+### Handlers Refatorados
 
-## Passo 4 — Refatorar handlers de Categoria
-
-### 4.1 `CriarCategoriaCommandHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir `new CategoriaDto { ... }` por:
+**Categoria** (4 handlers):
+- `CriarCategoriaCommandHandler`, `AtualizarCategoriaCommandHandler`, `ObterCategoriaPorIdQueryHandler`:
   ```csharp
   return mapper.Map<Categoria, CategoriaDto>(categoria);
   ```
-
-### 4.2 `AtualizarCategoriaCommandHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir `new CategoriaDto { ... }` por:
-  ```csharp
-  return mapper.Map<Categoria, CategoriaDto>(categoria);
-  ```
-
-### 4.3 `ObterCategoriaPorIdQueryHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir `new CategoriaDto { ... }` por:
-  ```csharp
-  return mapper.Map<Categoria, CategoriaDto>(categoria);
-  ```
-
-### 4.4 `ObterTodasCategoriasQueryHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir projeção manual por:
+- `ObterTodasCategoriasQueryHandler`:
   ```csharp
   return mapper.Map<List<Categoria>, List<CategoriaDto>>(categorias);
   ```
 
----
-
-## Passo 5 — Refatorar handlers de Produto
-
-Remover os métodos estáticos `MapToProdutoDto()` presentes em cada handler.
-
-### 5.1 `CriarProdutoCommandHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir chamada a `MapToProdutoDto(produto)` e o mapeamento manual de `Imagens` por:
+**Produto** (5 handlers) — métodos estáticos `MapToProdutoDto()` removidos:
+- `CriarProdutoCommandHandler`, `AtualizarProdutoCommandHandler`, `ObterProdutoPorIdQueryHandler`:
   ```csharp
   return mapper.Map<Produto, ProdutoDto>(produto);
   ```
-- O mapeamento de `Imagem → ImagemDto` é feito automaticamente pelo profile.
-
-### 5.2 `AtualizarProdutoCommandHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir chamada a `MapToProdutoDto(produto)` por:
-  ```csharp
-  return mapper.Map<Produto, ProdutoDto>(produto);
-  ```
-
-### 5.3 `ObterProdutoPorIdQueryHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir `MapToProdutoDto(produto)` por:
-  ```csharp
-  return mapper.Map<Produto, ProdutoDto>(produto);
-  ```
-
-### 5.4 `ObterTodosProdutosQueryHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir projeção manual por:
+- `ObterTodosProdutosQueryHandler`:
   ```csharp
   return mapper.Map<List<Produto>, List<ProdutoDto>>(produtos);
   ```
-
-### 5.5 `ObterProdutosPaginadoQueryHandler`
-
-- Injetar `IMapper _mapper` via construtor
-- Substituir projeção da lista de itens por:
+- `ObterProdutosPaginadoQueryHandler`:
   ```csharp
   Itens = mapper.Map<List<Produto>, List<ProdutoDto>>(produtos)
   ```
 
----
+O mapeamento `Imagem → ImagemDto` é feito automaticamente pelo profile quando `Produto → ProdutoDto` é mapeado.
 
-## Passo 6 — Atualizar testes
+### Testes
 
-Arquivo: `src/Neostore.Tests/`
-
-Handlers que recebem `IMapper` precisam de mock nos testes unitários:
-
+Handlers que recebem `IMapper` usam instância real (não Moq):
 ```csharp
 IMapper mapper = new MapperConfiguration(cfg =>
     cfg.AddProfile<MappingProfile>()).CreateMapper();
 ```
 
-Passar `mapper` direto (não mockar com Moq) — testa o profile real junto ao handler.
+Passar `mapper` direto testa o profile real junto ao handler.
 
----
+## Consequences
+### Positivo
+- Mapeamentos centralizados — adicionar campo na entidade requer mudança apenas no `MappingProfile`.
+- Elimina métodos estáticos `MapToProdutoDto()` duplicados.
+- Testes cobrem o profile real, não um mock.
 
-## Checklist
+### Trade-offs
+- AutoMapper adiciona dependência externa.
+- Erros de mapeamento surgem em runtime se o profile estiver incompleto (mitigado por `AssertConfigurationIsValid()` em testes).
 
-- [ ] Pacote AutoMapper instalado em `Neostore.Application`
-- [ ] `MappingProfile` criado com 3 maps (Categoria, Produto, Imagem)
-- [ ] `AddAutoMapper()` registrado em `DependencyInjection.cs`
-- [ ] 4 handlers de Categoria refatorados
-- [ ] 5 handlers de Produto refatorados
-- [ ] Métodos estáticos `MapToProdutoDto()` removidos
-- [ ] Testes atualizados com `MapperConfiguration` real
-- [ ] `dotnet build` sem warnings
-- [ ] `dotnet test` verde
+## Checklist de Implementação
+
+- [x] AutoMapper instalado em `Neostore.Application`
+- [x] `MappingProfile` criado com 3 maps (Categoria, Produto, Imagem)
+- [x] `AddAutoMapper()` registrado em `DependencyInjection.cs`
+- [x] 4 handlers de Categoria refatorados
+- [x] 5 handlers de Produto refatorados
+- [x] Métodos estáticos `MapToProdutoDto()` removidos
+- [x] Testes atualizados com `MapperConfiguration` real
+- [x] `dotnet build` sem warnings
+- [x] `dotnet test` verde

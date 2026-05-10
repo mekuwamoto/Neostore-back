@@ -1,60 +1,46 @@
-# Plano de Implementação: CRUD de Categorias e Produtos
+# ADR-02: Implementação dos CRUDs de Categorias e Produtos
 
-Este documento especifica o roteiro técnico para a implementação das operações de CRUD, seguindo os padrões de CQRS e Clean Architecture definidos nas especificações anteriores.
+## Status
+Partially Implemented
 
-## 1. Fluxo de Implementação (Padrão)
-Para cada entidade, a implementação deve seguir esta ordem lógica para garantir a integridade da arquitetura:
-1.  **Domínio:** Definição da entidade e métodos de negócio.
-2.  **Persistência:** Mapeamento (Fluent API Configuration em arquivo próprio por entidade) para MariaDB e implementação do Repositório.
-3.  **Application (Commands):** Definição das intenções de escrita e regras de validação.
-4.  **Application (Queries):** Definição das intenções de leitura e DTOs de resposta.
-5.  **Application (Handlers):** Implementação da lógica de orquestração utilizando Mediatr
-6.  **API:** Exposição dos endpoints via Controllers.
+## Date
+2025-01-01
 
----
+## Context
+Com entidades, CQRS e repositórios definidos (ADR-01), é necessário estabelecer a ordem de implementação e rastrear o estado de cada operação para garantir consistência entre camadas.
 
-## 2. CRUD de Categorias
+## Decision
+Cada entidade segue esta ordem de implementação:
 
-### 2.1 Operações de Escrita (Commands)
-| Operação                | Dados de Entrada                   | Regras de Negócio e Validações                                                  | Status |
-| :---------------------- | :--------------------------------- | :------------------------------------------------------------------------------ | :----- |
-| **Criar Categoria**     | Nome, IdCategoriaPai (Opcional)    | Gerar Slug automaticamente. Nome deve ser único. Validar existência do pai.     | ✅ Implementado |
-| **Atualizar Categoria** | Id, Nome, IdCategoriaPai (Opcional) | Atualizar Slug se o nome mudar. Impedir auto-referência (id == idCategoriaPai). | ✅ Implementado |
-| **Excluir Categoria**   | Id                                 | Impedir exclusão se houver produtos vinculados ou subcategorias ativas.         | ✅ Implementado |
+1. **Domínio** — entidade + métodos de negócio
+2. **Persistência** — Fluent API Configuration + repositório
+3. **Application (Commands)** — intenções de escrita + validadores
+4. **Application (Queries)** — intenções de leitura + DTOs
+5. **Application (Handlers)** — orquestração via MediatR
+6. **API** — controllers expondo endpoints
 
-### 2.2 Operações de Leitura (Queries)
-| Operação              | Descrição                                                           | Status |
-| :-------------------- | :------------------------------------------------------------------ | :----- |
-| **Obter por Id**      | Retorna detalhes da categoria e nome da categoria pai.              | ✅ Implementado |
-| **Listar Árvore**     | Retorna todas as categorias organizadas de forma hierárquica.       | ✅ Implementado |
-| **Listar Raiz**       | Retorna apenas categorias que não possuem `idCategoriaPai`.         | ⏳ Parcial — `ObterRaizAsync` implementado no repositório, sem Query/Handler/endpoint expostos |
+### CRUD de Categorias
 
----
+#### Operações de Escrita
 
-## 3. CRUD de Produtos
+| Operação | Dados de Entrada | Regras de Negócio | Status |
+| -------- | ---------------- | ----------------- | ------ |
+| Criar | Nome, IdCategoriaPai? | Gerar Slug. Nome único. Validar existência do pai. | ✅ Implementado |
+| Atualizar | Id, Nome, IdCategoriaPai? | Atualizar Slug se nome mudar. Impedir auto-referência. | ✅ Implementado |
+| Excluir | Id | Bloquear se houver produtos ou subcategorias vinculadas. | ✅ Implementado |
 
-### 3.1 Operações de Escrita (Commands)
-| Operação              | Dados de Entrada                                      | Regras de Negócio e Validações                                                         | Status |
-| :-------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------------- | :----- |
-| **Criar Produto**     | Nome, SKU, Preço, IdCategoria, Descrição, Imagens     | SKU deve ser único no sistema. idCategoria deve existir. Preço > 0.                    | ✅ Implementado |
-| **Atualizar Produto** | Id, Nome, SKU, Preço, IdCategoria, Descrição, Imagens | Validar unicidade do SKU (exceto para o próprio registro).                             | ✅ Implementado |
-| **Ajustar Estoque**   | Id, Quantidade (Delta)                                | Aumentar ou diminuir o estoque atual. O saldo final nunca pode ser < 0.                | ✅ Implementado |
-| **Excluir Produto**   | Id                                                    | Aplicar Soft-Delete (marcar como inativo) para preservar histórico de pedidos futuros. | ⚠️ Pendente — atualmente implementado como hard-delete; entidade não possui campo `Ativo`/`DeletadoEm` |
+#### Operações de Leitura
 
-### 3.2 Operações de Leitura (Queries)
-| Operação                     | Descrição                                                             | Status |
-| :--------------------------- | :-------------------------------------------------------------------- | :----- |
-| **Obter Detalhes**           | Retorna todos os campos do produto + objeto Categoria simplificado.   | ✅ Implementado |
-| **Listagem Paginada**        | Suporte a filtros por `idCategoria`, `Nome` (busca parcial) e `SKU`. | ✅ Implementado |
-| **Verificar Disponibilidade** | Consulta rápida apenas do saldo de estoque por Id.                   | ❌ Não implementado |
+| Operação | Descrição | Status |
+| -------- | --------- | ------ |
+| Obter por Id | Retorna categoria + nome da categoria pai | ✅ Implementado |
+| Listar Árvore | Todas as categorias hierarquicamente | ✅ Implementado |
+| Listar Raiz | Apenas categorias sem `IdCategoriaPai` | ⏳ Repositório implementado (`ObterRaizAsync`), sem Query/Handler/endpoint |
 
----
+#### Endpoints
 
-## 4. Definição de Endpoints (API Admin)
-
-### Categorias
 | Método | Endpoint | Handler | Status |
-| :----- | :------- | :------ | :----- |
+| ------ | -------- | ------- | ------ |
 | `POST` | `/api/admin/categorias` | `CriarCategoriaCommandHandler` | ✅ |
 | `GET` | `/api/admin/categorias` | `ObterTodasCategoriasQueryHandler` | ✅ |
 | `GET` | `/api/admin/categorias/{id}` | `ObterCategoriaPorIdQueryHandler` | ✅ |
@@ -62,32 +48,65 @@ Para cada entidade, a implementação deve seguir esta ordem lógica para garant
 | `DELETE` | `/api/admin/categorias/{id}` | `DeletarCategoriaCommandHandler` | ✅ |
 | `GET` | `/api/admin/categorias/raiz` | — | ⏳ Pendente |
 
-### Produtos
+---
+
+### CRUD de Produtos
+
+#### Operações de Escrita
+
+| Operação | Dados de Entrada | Regras de Negócio | Status |
+| -------- | ---------------- | ----------------- | ------ |
+| Criar | Nome, SKU, Preco, IdCategoria, Descricao, Imagens | SKU único. IdCategoria deve existir. Preco > 0. | ✅ Implementado |
+| Atualizar | Id + todos os campos | SKU único exceto para o próprio registro. | ✅ Implementado |
+| Ajustar Estoque | Id, Quantidade (delta) | Saldo final nunca < 0. | ✅ Implementado |
+| Excluir | Id | Soft-delete para preservar histórico. | ⚠️ Hard-delete atual — soft-delete pendente (ver ADR-03) |
+
+#### Operações de Leitura
+
+| Operação | Descrição | Status |
+| -------- | --------- | ------ |
+| Obter Detalhes | Produto completo + Categoria simplificada | ✅ Implementado |
+| Listagem Paginada | Filtros por `IdCategoria`, `Nome` (parcial), `SKU` | ✅ Implementado |
+| Verificar Disponibilidade | Saldo de estoque por Id | ❌ Não implementado |
+
+#### Endpoints
+
 | Método | Endpoint | Handler | Status |
-| :----- | :------- | :------ | :----- |
+| ------ | -------- | ------- | ------ |
 | `POST` | `/api/admin/produtos` | `CriarProdutoCommandHandler` | ✅ |
 | `GET` | `/api/admin/produtos` | `ObterProdutosPaginadoQueryHandler` | ✅ |
 | `GET` | `/api/admin/produtos/{id}` | `ObterProdutoPorIdQueryHandler` | ✅ |
 | `PUT` | `/api/admin/produtos/{id}` | `AtualizarProdutoCommandHandler` | ✅ |
 | `PATCH` | `/api/admin/produtos/{id}/estoque` | `AjustarEstoqueCommandHandler` | ✅ |
-| `DELETE` | `/api/admin/produtos/{id}` | `DeletarProdutoCommandHandler` | ⚠️ Hard-delete — pendente soft-delete |
+| `DELETE` | `/api/admin/produtos/{id}` | `DeletarProdutoCommandHandler` | ⚠️ Hard-delete |
 | `GET` | `/api/admin/produtos/{id}/disponibilidade` | — | ❌ Não implementado |
 
 ---
 
-## 5. Requisitos Transversais
+### Requisitos Transversais
+
 | Requisito | Status |
-| :-------- | :----- |
-| **Validação** — FluentValidation em todos os Commands antes do Handler | ✅ Implementado — `CriarProdutoCommandValidator`, `AtualizarProdutoCommandValidator`, `CriarCategoriaCommandValidator`, `AtualizarCategoriaCommandValidator` |
-| **Logs** — Registrar: Usuário Executor, Operação, Data/Hora, Id do Registro | ❌ Não implementado |
-| **Tratamento de Erros** — `400 Bad Request` para exceções de negócio; `500` para erros de sistema | ✅ Implementado — `InvalidOperationException` mapeada para `BadRequest` nos controllers |
+| --------- | ------ |
+| Validação via FluentValidation em todos os Commands | ✅ Implementado |
+| Tratamento de erros: `InvalidOperationException` → 400, exceções → 500 | ✅ Implementado nos controllers |
+| Logs de auditoria (usuário, operação, timestamp, id do registro) | ❌ Não implementado — ver ADR-04 |
 
----
+## Consequences
+### Positivo
+- CRUDs principais de categorias e produtos operacionais.
+- Paginação com filtros elimina necessidade de listagem completa.
+- Validação centralizada no pipeline MediatR.
 
-## 6. Pendências
+### Trade-offs
+- Soft-delete ausente: exclusão de produto é irreversível no estado atual.
+- Endpoint de disponibilidade de estoque ausente.
+- Logs de auditoria ausentes.
 
-- [ ] **Listar Raiz (Categorias):** Criar `ObterRaizQuery`, `ObterRaizQueryHandler` e expor endpoint `GET /api/admin/categorias/raiz` usando `ObterRaizAsync` já existente no `ICategoriaRepository`.
-- [ ] **Verificar Disponibilidade (Produto):** Criar `ObterEstoqueQuery`, handler e endpoint `GET /api/admin/produtos/{id}/disponibilidade` retornando apenas `{ id, estoque }`.
-- [ ] **Logs de Auditoria:** Definir estratégia (middleware, interceptor EF Core, ou decorator MediatR) e implementar registro de operações.
-- [ ] **Migrations:** Gerar migration inicial com `dotnet ef migrations add InitialCreate`.
-- [ ] **Docker Compose:** Configurar ambiente local com MariaDB.
+## Pendências
+
+- [ ] Soft-delete em Produto e UsuarioAdmin (ADR-03)
+- [ ] `GET /api/admin/categorias/raiz` — criar `ObterRaizQuery` + handler usando `ObterRaizAsync` existente
+- [ ] `GET /api/admin/produtos/{id}/disponibilidade` — retorna `{ id, estoque }`
+- [ ] Logs de auditoria via MediatR Pipeline Behavior (ADR-04)
+- [ ] Migration inicial: `dotnet ef migrations add InitialCreate`
+- [ ] Docker Compose com MariaDB
