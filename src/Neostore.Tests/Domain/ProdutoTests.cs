@@ -79,72 +79,93 @@ public class ProdutoTests
     }
 
     [Fact]
-    public void AdicionarImagem_ComUrlValida_DeveAdicionarAoLista()
+    public void AdicionarImagem_ComImagemValida_DeveAdicionarAoLista()
     {
-        var produto = new Produto();
-        var url = "https://example.com/imagem.jpg";
+        var produto = new Produto { Id = Guid.NewGuid() };
+        var imagem = new Imagem
+        {
+            Id = Guid.NewGuid(),
+            NomeArquivo = "notebook.jpg",
+            ChaveS3 = "produtos/notebook/imagem1.jpg",
+            TipoConteudo = "image/jpeg",
+            TamanhoBytes = 1024000,
+            DataCriacao = DateTime.UtcNow
+        };
 
-        produto.AdicionarImagem(url);
+        produto.AdicionarImagem(imagem);
 
         produto.Imagens.Should().HaveCount(1);
-        produto.Imagens[0].Should().Be(url);
+        produto.Imagens[0].Id.Should().Be(imagem.Id);
+        produto.Imagens[0].IdProduto.Should().Be(produto.Id);
     }
 
     [Fact]
-    public void AdicionarImagem_ComUrlVazia_DeveLançarExceção()
-    {
-        var produto = new Produto();
-
-        Action action = () => produto.AdicionarImagem("");
-
-        action.Should().Throw<ArgumentException>()
-            .WithMessage("URL de imagem não pode ser vazia. (Parameter 'url')");
-    }
-
-    [Fact]
-    public void AdicionarImagem_ComUrlNula_DeveLançarExceção()
+    public void AdicionarImagem_ComImagemNula_DeveLançarExceção()
     {
         var produto = new Produto();
 
         Action action = () => produto.AdicionarImagem(null!);
 
-        action.Should().Throw<ArgumentException>()
-            .WithMessage("URL de imagem não pode ser vazia. (Parameter 'url')");
+        action.Should().Throw<ArgumentNullException>()
+            .WithMessage("Imagem não pode ser nula. (Parameter 'imagem')");
     }
 
     [Fact]
-    public void AdicionarImagem_MultiplasChamadas_DeveAdicionarTodasAsUrls()
+    public void AdicionarImagem_ComChaveS3Vazia_DeveLançarExceção()
     {
         var produto = new Produto();
-        var urls = new[] { "url1.jpg", "url2.jpg", "url3.jpg" };
+        var imagem = new Imagem { ChaveS3 = "" };
 
-        foreach (var url in urls)
+        Action action = () => produto.AdicionarImagem(imagem);
+
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("ChaveS3 da imagem não pode ser vazia. (Parameter 'imagem')");
+    }
+
+    [Fact]
+    public void AdicionarImagem_MultiplasChamadas_DeveAdicionarTodasAsImagens()
+    {
+        var produto = new Produto { Id = Guid.NewGuid() };
+        var imagens = new[]
         {
-            produto.AdicionarImagem(url);
+            new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img1.jpg", TamanhoBytes = 1000, DataCriacao = DateTime.UtcNow },
+            new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img2.jpg", TamanhoBytes = 2000, DataCriacao = DateTime.UtcNow },
+            new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img3.jpg", TamanhoBytes = 3000, DataCriacao = DateTime.UtcNow }
+        };
+
+        foreach (var imagem in imagens)
+        {
+            produto.AdicionarImagem(imagem);
         }
 
         produto.Imagens.Should().HaveCount(3);
-        produto.Imagens.Should().BeEquivalentTo(urls);
+        produto.Imagens.Should().AllSatisfy(x => x.IdProduto.Should().Be(produto.Id));
     }
 
     [Fact]
-    public void RemoverImagem_ComUrlExistente_DeveRemoverDaLista()
+    public void RemoverImagem_ComIdExistente_DeveRemoverDaLista()
     {
-        var produto = new Produto();
-        var url = "https://example.com/imagem.jpg";
-        produto.Imagens.Add(url);
+        var produto = new Produto { Id = Guid.NewGuid() };
+        var imagem = new Imagem
+        {
+            Id = Guid.NewGuid(),
+            ChaveS3 = "notebook.jpg",
+            TamanhoBytes = 1024000,
+            DataCriacao = DateTime.UtcNow
+        };
+        produto.AdicionarImagem(imagem);
 
-        produto.RemoverImagem(url);
+        produto.RemoverImagem(imagem.Id);
 
         produto.Imagens.Should().BeEmpty();
     }
 
     [Fact]
-    public void RemoverImagem_ComUrlNaoExistente_NaoDeveLançarExceção()
+    public void RemoverImagem_ComIdNaoExistente_NaoDeveLançarExceção()
     {
         var produto = new Produto();
 
-        Action action = () => produto.RemoverImagem("url-inexistente.jpg");
+        Action action = () => produto.RemoverImagem(Guid.NewGuid());
 
         action.Should().NotThrow();
         produto.Imagens.Should().BeEmpty();
@@ -153,14 +174,20 @@ public class ProdutoTests
     [Fact]
     public void RemoverImagem_DeLista_DeveRemoverApenasEspecificada()
     {
-        var produto = new Produto();
-        produto.Imagens.AddRange(new[] { "url1.jpg", "url2.jpg", "url3.jpg" });
+        var produto = new Produto { Id = Guid.NewGuid() };
+        var img1 = new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img1.jpg", TamanhoBytes = 1000, DataCriacao = DateTime.UtcNow };
+        var img2 = new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img2.jpg", TamanhoBytes = 2000, DataCriacao = DateTime.UtcNow };
+        var img3 = new Imagem { Id = Guid.NewGuid(), ChaveS3 = "img3.jpg", TamanhoBytes = 3000, DataCriacao = DateTime.UtcNow };
 
-        produto.RemoverImagem("url2.jpg");
+        produto.AdicionarImagem(img1);
+        produto.AdicionarImagem(img2);
+        produto.AdicionarImagem(img3);
+
+        produto.RemoverImagem(img2.Id);
 
         produto.Imagens.Should().HaveCount(2);
-        produto.Imagens.Should().NotContain("url2.jpg");
-        produto.Imagens.Should().Contain("url1.jpg");
-        produto.Imagens.Should().Contain("url3.jpg");
+        produto.Imagens.Should().NotContain(x => x.Id == img2.Id);
+        produto.Imagens.Should().Contain(x => x.Id == img1.Id);
+        produto.Imagens.Should().Contain(x => x.Id == img3.Id);
     }
 }

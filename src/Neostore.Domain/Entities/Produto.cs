@@ -8,7 +8,7 @@ public class Produto
     public decimal Preço { get; set; }
     public Guid IdCategoria { get; set; }
     public string Descrição { get; set; } = string.Empty;
-    public List<string> Imagens { get; set; } = new();
+    public List<Imagem> Imagens { get; set; } = new();
     public int Estoque { get; set; }
 
     public void AjustarEstoque(int quantidade)
@@ -19,16 +19,24 @@ public class Produto
         Estoque += quantidade;
     }
 
-    public void AdicionarImagem(string url)
+    public void AdicionarImagem(Imagem imagem)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            throw new ArgumentException("URL de imagem não pode ser vazia.", nameof(url));
+        if (imagem == null)
+            throw new ArgumentNullException(nameof(imagem), "Imagem não pode ser nula.");
 
-        Imagens.Add(url);
+        if (string.IsNullOrWhiteSpace(imagem.ChaveS3))
+            throw new ArgumentException("ChaveS3 da imagem não pode ser vazia.", nameof(imagem));
+
+        imagem.IdProduto = Id;
+        Imagens.Add(imagem);
     }
 
-    public void RemoverImagem(string url)
+    public void RemoverImagem(Guid idImagem)
     {
-        Imagens.Remove(url);
+        var imagem = Imagens.FirstOrDefault(x => x.Id == idImagem);
+        if (imagem != null)
+        {
+            Imagens.Remove(imagem);
+        }
     }
 }
