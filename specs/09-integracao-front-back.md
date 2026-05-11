@@ -1,36 +1,39 @@
 # ADR-09: Integração Front-Back — CORS
 
-**Status:** Accepted
+**Status:** Implemented
 
 ## Contexto
 
-Angular SPA em `http://localhost:4200` chama API em `http://localhost:5085`. Browser envia preflight `OPTIONS` antes de qualquer `POST`/`PUT`/`DELETE`. API retorna `307 Redirect` (via `UseHttpsRedirection`) — browser bloqueia.
+Angular SPA em `http://localhost:4200` chama API em `http://localhost:5085`. Browser envia preflight `OPTIONS` antes de qualquer `POST`/`PUT`/`DELETE`. API bloqueava com dois problemas distintos:
 
-```
-Access to XMLHttpRequest at 'http://localhost:5085/api/admin/categorias'
-from origin 'http://localhost:4200' has been blocked by CORS policy:
-Response to preflight request doesn't pass access control check:
-Redirect is not allowed for a preflight request.
-```
+1. `UseHttpsRedirection()` antes de CORS — preflight `OPTIONS` recebia `307` antes dos headers `Access-Control-Allow-*`.
+2. Após mover CORS para antes do redirect, o `POST` real continuava recebendo `307` — `UseHttpsRedirection` redirecionava requisições HTTP em desenvolvimento.
 
 ## Causa Raiz
 
-`UseHttpsRedirection()` está antes de qualquer política CORS no pipeline. Preflight `OPTIONS` recebe `307` antes de receber headers `Access-Control-Allow-*` — o browser interpreta como falha de CORS.
+Dois problemas em sequência:
+
+| Problema | Sintoma | Causa |
+|---|---|---|
+| #1 | `OPTIONS` → `307` | `UseHttpsRedirection` antes de `UseCors` no pipeline |
+| #2 | `OPTIONS` → `204`, `POST` → `307` | `UseHttpsRedirection` redireciona requisições HTTP mesmo em dev |
 
 ## Decisão
 
-1. Registrar política CORS nomeada `"AllowFrontend"` em `DependencyInjection.cs`.
-2. Adicionar `UseCors("AllowFrontend")` em `MiddlewareConfiguration.cs` **antes** de `UseHttpsRedirection()`.
+1. Criar `CorsOptions` (Options Pattern) — origins lidas de `appsettings.json`, sem hardcode.
+2. Registrar política CORS `"AllowFrontend"` via `IConfiguration`.
+3. `UseCors` **antes** de `UseHttpsRedirection` no pipeline.
+4. `UseHttpsRedirection` condicional — ativo apenas fora de Development.
 
-Ordem correta do pipeline:
+Pipeline final:
 
 ```
-ExceptionMiddleware → UseCors → UseHttpsRedirection → UseAuthorization
+ExceptionMiddleware → UseCors → UseHttpsRedirection (não-dev) → UseAuthorization
 ```
 
 ## Implementação
 
-### 1. `Neostore.Api/Options/CorsOptions.cs` (novo arquivo)
+### 1. `Neostore.Api/Options/CorsOptions.cs`
 
 ```csharp
 namespace Neostore.Api.Options;
@@ -42,7 +45,7 @@ public sealed class CorsOptions
 }
 ```
 
-### 2. `appsettings.json` — adicionar seção
+### 2. `appsettings.json`
 
 ```json
 "Cors": {
@@ -50,7 +53,7 @@ public sealed class CorsOptions
 }
 ```
 
-### 3. `appsettings.Development.json` — override para dev
+### 3. `appsettings.Development.json`
 
 ```json
 "Cors": {
@@ -59,8 +62,6 @@ public sealed class CorsOptions
 ```
 
 ### 4. `Neostore.Api/Services/DependencyInjection.cs`
-
-Adicionar no método `AddServices`:
 
 ```csharp
 services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
@@ -81,14 +82,17 @@ services.AddCors(options =>
 });
 ```
 
-### 2. `Neostore.Api/Middlewares/MiddlewareConfiguration.cs`
+### 5. `Neostore.Api/Middlewares/MiddlewareConfiguration.cs`
 
 ```csharp
-internal static IApplicationBuilder ConfigureMiddlewares(this IApplicationBuilder app)
+internal static WebApplication ConfigureMiddlewares(this WebApplication app)
 {
     app.UseMiddleware<ExceptionMiddleware>();
     app.UseCors("AllowFrontend");
-    app.UseHttpsRedirection();
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
     app.UseAuthorization();
     return app;
 }
@@ -96,7 +100,7 @@ internal static IApplicationBuilder ConfigureMiddlewares(this IApplicationBuilde
 
 ## Consequências
 
-- Preflight `OPTIONS` recebe `204` com headers CORS corretos — sem redirect.
-- Política restrita a `localhost:4200` — em produção, substituir pela origin do deploy do front.
+- Preflight `OPTIONS` responde `204` com headers CORS corretos.
+- Requisições HTTP em Development não são redirecionadas — Angular `http://localhost:4200` funciona sem TLS local.
+- Em produção, `UseHttpsRedirection` ativo + origins configuradas via `appsettings.json` do ambiente.
 - Sem impacto nos testes unitários existentes.
-

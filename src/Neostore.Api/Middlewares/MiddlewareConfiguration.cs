@@ -3,11 +3,14 @@ namespace Neostore.Api.Middlewares;
 
 internal static class MiddlewareConfiguration
 {
-    internal static IApplicationBuilder ConfigureMiddlewares(this IApplicationBuilder app)
+    internal static WebApplication ConfigureMiddlewares(this WebApplication app)
     {
         app.UseMiddleware<ExceptionMiddleware>();
         app.UseCors("AllowFrontend");
-        app.UseHttpsRedirection();
+        if (!app.Environment.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
         app.UseAuthorization();
         return app;
     }
