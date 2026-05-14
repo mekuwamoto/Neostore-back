@@ -55,7 +55,7 @@ All IDs are `Guid` assigned manually (`ValueGeneratedNever`).
 
 ## CQRS Pattern (MediatR)
 
-Commands and queries live in `Neostore.Application/`. Each command/query is an immutable `record` implementing `IRequest<TResponse>`. Handlers implement `IRequestHandler<TRequest, TResponse>`.
+Commands and queries live in `Neostore.Application/Commands/` and `Neostore.Application/Queries/`. Each file contains both the immutable `record` implementing `IRequest<TResponse>` and its handler implementing `IRequestHandler<TRequest, TResponse>`.
 
 ### Current Commands
 
@@ -156,6 +156,7 @@ Prioritize business rules over implementation details.
 Test structure:
 - `Application/Handlers/Categoria/` — 5 handler test files
 - `Application/Handlers/Produto/` — 6 handler test files
+- `Application/Handlers/UsuarioAdmin/` — 6 handler test files
 - `Application/Validators/` — CategoriaValidatorsTests, ProdutoValidatorsTests
 - `Domain/` — CategoriaTests, ProdutoTests, ImagemTests, UsuarioAdminTests
 

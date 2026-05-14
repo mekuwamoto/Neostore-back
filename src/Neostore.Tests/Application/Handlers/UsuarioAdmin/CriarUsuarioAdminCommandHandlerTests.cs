@@ -1,9 +1,8 @@
-using AutoMapper;
+﻿using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.UsuarioAdmin;
 using Neostore.Application.DTOs;
-using Neostore.Application.Handlers.UsuarioAdmin;
 using Neostore.Persistence.Repositories;
 using Neostore.Tests.Factories;
 using UsuarioAdminEntidade = Neostore.Domain.Entities.UsuarioAdmin;

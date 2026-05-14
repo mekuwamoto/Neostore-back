@@ -1,7 +1,6 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.UsuarioAdmin;
-using Neostore.Application.Handlers.UsuarioAdmin;
 using Neostore.Persistence.Repositories;
 using UsuarioAdminEntidade = Neostore.Domain.Entities.UsuarioAdmin;
 

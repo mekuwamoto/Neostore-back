@@ -1,7 +1,6 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.Produto;
-using Neostore.Application.Handlers.Produto;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;
 using Neostore.Persistence.Repositories;

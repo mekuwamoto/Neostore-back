@@ -6,16 +6,13 @@ Use-case layer. Orchestrates domain + persistence via CQRS (MediatR). No HTTP, n
 
 ```
 Behaviors/      — MediatR pipeline behaviors
-Commands/       — Write intentions (immutable records)
+Commands/       — Write intentions: record + handler in the same file
   Categoria/
   Produto/
   UsuarioAdmin/
 DTOs/           — Read-only response shapes
-Handlers/       — Command and query processors
-  Categoria/
-  Produto/
 Mappings/       — AutoMapper profiles
-Queries/        — Read intentions (immutable records)
+Queries/        — Read intentions: record + handler in the same file
   Categoria/
   Produto/
   UsuarioAdmin/
@@ -55,7 +52,7 @@ DependencyInjection.cs
 | Query | `ObterProdutoPorIdQuery(Id)` | `ProdutoDto?` |
 | Query | `ObterProdutosPaginadoQuery(...)` | `ProdutosPaginadoDto` |
 
-### UsuarioAdmin (commands/queries defined, handlers not yet implemented)
+### UsuarioAdmin
 
 | Type | Class | Returns |
 |------|-------|---------|
@@ -120,8 +117,8 @@ services.AddAutoMapper(typeof(DependencyInjection).Assembly);
 
 ## Adding a New Command/Query
 
-1. Create `record` in `Commands/` or `Queries/` implementing `IRequest<TResponse>`.
-2. Create handler in `Handlers/` implementing `IRequestHandler<TRequest, TResponse>`.
+1. Create file in `Commands/<Entity>/` or `Queries/<Entity>/`.
+2. Add `record` implementing `IRequest<TResponse>` and handler class implementing `IRequestHandler<TRequest, TResponse>` in the **same file**, same namespace.
 3. Create validator in `Validators/` if it's a command.
 4. Add handler test in `Neostore.Tests/Application/Handlers/`.
 5. No DI registration needed — MediatR and FluentValidation scan by convention.
