@@ -1,7 +1,6 @@
-using AutoMapper;
+﻿using AutoMapper;
 using AwesomeAssertions;
 using Moq;
-using Neostore.Application.Handlers.Produto;
 using Neostore.Application.Queries.Produto;
 using Neostore.Domain.Entities;
 using Produto = Neostore.Domain.Entities.Produto;

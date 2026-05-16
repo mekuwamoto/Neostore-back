@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="MediatR" Version="11.1.0" />
@@ -17,7 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Neostore.Domain\Neostore.Domain.csproj" />
-    <ProjectReference Include="..\Neostore.Infrastructure\Neostore.Infrastructure.csproj" />
     <ProjectReference Include="..\Neostore.Persistence\Neostore.Persistence.csproj" />
   </ItemGroup>
 

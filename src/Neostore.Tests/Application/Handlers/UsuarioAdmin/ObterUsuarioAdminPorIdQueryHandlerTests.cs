@@ -1,8 +1,7 @@
-using AutoMapper;
+﻿using AutoMapper;
 using AwesomeAssertions;
 using Moq;
 using Neostore.Application.DTOs;
-using Neostore.Application.Handlers.UsuarioAdmin;
 using Neostore.Application.Queries.UsuarioAdmin;
 using Neostore.Persistence.Repositories;
 using Neostore.Tests.Factories;

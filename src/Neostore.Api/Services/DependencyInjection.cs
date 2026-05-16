@@ -1,4 +1,5 @@
-﻿using Neostore.Application;
+﻿using Neostore.Api.Options;
+using Neostore.Application;
 using Neostore.Infrastructure;
 using Neostore.Persistence;
 
@@ -9,15 +10,32 @@ internal static class DependencyInjection
     internal static IServiceCollection AddServices(this IServiceCollection services, IConfiguration configuration)
     {
         services
-            .AppApiServices()
+            .AppApiServices(configuration)
             .AddApplication(configuration)
             .AddInfrastructure(configuration)
             .AddPersistence(configuration);
         return services;
     }
 
-    internal static IServiceCollection AppApiServices(this IServiceCollection services)
+    internal static IServiceCollection AppApiServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<CorsOptions>(configuration.GetSection(CorsOptions.SectionName));
+
+        CorsOptions corsOptions = configuration
+            .GetSection(CorsOptions.SectionName)
+            .Get<CorsOptions>() ?? new CorsOptions();
+
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy
+                    .WithOrigins(corsOptions.AllowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
         services.AddControllers();
         services.AddOpenApi(options =>
         {

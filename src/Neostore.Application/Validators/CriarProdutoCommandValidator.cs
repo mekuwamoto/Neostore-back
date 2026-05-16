@@ -27,11 +27,7 @@ public class CriarProdutoCommandValidator : AbstractValidator<CriarProdutoComman
         RuleFor(x => x.Estoque)
             .GreaterThanOrEqualTo(0).WithMessage("Estoque não pode ser negativo");
 
-        RuleForEach(x => x.Imagens)
-            .ChildRules(imagem =>
-            {
-                imagem.RuleFor(i => i.ChaveS3)
-                    .NotEmpty().WithMessage("ChaveS3 é obrigatória para cada imagem");
-            });
+        RuleFor(x => x.Imagens)
+            .NotEmpty().WithMessage("Pelo menos uma imagem é obrigatória.");
     }
 }

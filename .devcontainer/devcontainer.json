@@ -1,0 +1,32 @@
+{
+  "name": "Neostore Back",
+  "image": "mcr.microsoft.com/devcontainers/base:debian-12",
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0",
+      "installUsingApt": false
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && npm install -g @anthropic-ai/claude-code && dotnet restore src/Neostore.slnx && uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.11",
+  "forwardPorts": [5085],
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "ASPNETCORE_ENVIRONMENT": "Container",
+    "ASPNETCORE_URLS": "http://0.0.0.0:5085"
+  },
+  "mounts": [
+    "source=${localEnv:USERPROFILE}\\.claude,target=/root/.claude,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime"
+      ]
+    }
+  }
+}

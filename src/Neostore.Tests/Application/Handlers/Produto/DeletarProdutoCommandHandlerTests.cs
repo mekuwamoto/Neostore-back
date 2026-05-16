@@ -1,7 +1,6 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.Produto;
-using Neostore.Application.Handlers.Produto;
 using Neostore.Persistence.Repositories;
 
 namespace Neostore.Tests.Application.ProdutoHandlers;

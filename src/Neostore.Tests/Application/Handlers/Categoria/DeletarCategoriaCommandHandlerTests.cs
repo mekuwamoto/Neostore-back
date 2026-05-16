@@ -1,7 +1,6 @@
-using AwesomeAssertions;
+﻿using AwesomeAssertions;
 using Moq;
 using Neostore.Application.Commands.Categoria;
-using Neostore.Application.Handlers.Categoria;
 using Neostore.Domain.Entities;
 using Categoria = Neostore.Domain.Entities.Categoria;
 using Neostore.Persistence.Repositories;

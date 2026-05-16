@@ -12,18 +12,42 @@ public class ProdutoController : ControllerBase
 {
     private readonly IMediator _mediator;
 
+    private static readonly string[] TiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+    private const long TamanhoMaximoBytes = 5 * 1024 * 1024;
+
     public ProdutoController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ProdutoDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<ProdutoDto>> Criar([FromBody] CriarProdutoCommand command)
+    public async Task<ActionResult<ProdutoDto>> Criar(
+        [FromForm] CriarProdutoRequest request,
+        CancellationToken cancellationToken)
     {
-        ProdutoDto resultado = await _mediator.Send(command);
+        foreach (IFormFile arquivo in request.Imagens)
+        {
+            if (!TiposPermitidos.Contains(arquivo.ContentType))
+                return BadRequest(new { erro = $"Tipo de arquivo não permitido: {arquivo.ContentType}" });
+
+            if (arquivo.Length > TamanhoMaximoBytes)
+                return BadRequest(new { erro = "Arquivo excede o tamanho máximo de 5 MB." });
+        }
+
+        CriarProdutoCommand command = new(
+            request.Nome,
+            request.SKU,
+            request.Preço,
+            request.IdCategoria,
+            request.Descrição,
+            request.Estoque,
+            request.Imagens);
+
+        ProdutoDto resultado = await _mediator.Send(command, cancellationToken);
         return CreatedAtAction(nameof(ObterPorId), new { id = resultado.Id }, resultado);
     }
 
@@ -36,8 +60,8 @@ public class ProdutoController : ControllerBase
         [FromQuery] string? nome = null,
         [FromQuery] string? sku = null)
     {
-        var query = new ObterProdutosPaginadoQuery(pagina, tamanho, idCategoria, nome, sku);
-        var resultado = await _mediator.Send(query);
+        ObterProdutosPaginadoQuery query = new(pagina, tamanho, idCategoria, nome, sku);
+        ProdutosPaginadoDto resultado = await _mediator.Send(query);
         return Ok(resultado);
     }
 
@@ -46,7 +70,7 @@ public class ProdutoController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProdutoDto>> ObterPorId(Guid id)
     {
-        var resultado = await _mediator.Send(new ObterProdutoPorIdQuery(id));
+        ProdutoDto? resultado = await _mediator.Send(new ObterProdutoPorIdQuery(id));
         if (resultado == null)
             return NotFound();
 
@@ -59,7 +83,7 @@ public class ProdutoController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ProdutoDto>> Atualizar(Guid id, [FromBody] AtualizarProdutoCommand command)
     {
-        AtualizarProdutoCommand commandComId = new AtualizarProdutoCommand(
+        AtualizarProdutoCommand commandComId = new(
             id,
             command.Nome,
             command.SKU,
@@ -79,7 +103,7 @@ public class ProdutoController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<int>> AjustarEstoque(Guid id, [FromBody] AjustarEstoqueRequest request)
     {
-        AjustarEstoqueCommand comando = new AjustarEstoqueCommand(id, request.Quantidade);
+        AjustarEstoqueCommand comando = new(id, request.Quantidade);
         int novoEstoque = await _mediator.Send(comando);
         return Ok(new { estoque = novoEstoque });
     }
@@ -96,6 +120,15 @@ public class ProdutoController : ControllerBase
         return NoContent();
     }
 }
+
+public record CriarProdutoRequest(
+    string Nome,
+    string SKU,
+    decimal Preço,
+    Guid IdCategoria,
+    string Descrição,
+    int Estoque,
+    List<IFormFile> Imagens);
 
 public class AjustarEstoqueRequest
 {
