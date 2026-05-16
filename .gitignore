@@ -607,3 +607,5 @@ obj/
 /specs/.obsidian
 
 src/Neostore.Api/appsettings.Development.json
+
+**.lscache
